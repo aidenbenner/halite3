@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="MyBot"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/aiden/projects/halitecpp"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/aiden/projects/halitecpp"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/aiden/projects/halitecpp"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="MyBot">
+				<Option output="/home/aiden/projects/halitecpp/MyBot" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/aiden/projects/halitecpp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/aiden/projects/halitecpp/hlt"/>
+					<Add directory="/home/aiden/projects/halitecpp"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 MyBot"/>
+					<CompileFile command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="MyBot/fast">
+				<Option output="/home/aiden/projects/halitecpp/MyBot" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/aiden/projects/halitecpp"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/aiden/projects/halitecpp/hlt"/>
+					<Add directory="/home/aiden/projects/halitecpp"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 MyBot/fast"/>
+					<CompileFile command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -f &quot;/home/aiden/projects/halitecpp/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/aiden/projects/halitecpp/MyBot.cpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/command.cpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/command.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/constants.cpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/constants.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/direction.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/dropoff.cpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/dropoff.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/entity.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/game.cpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/game.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/game_map.cpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/game_map.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/input.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/log.cpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/log.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/map_cell.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/player.cpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/player.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/position.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/ship.cpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/ship.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/shipyard.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/hlt/types.hpp">
+			<Option target="MyBot"/>
+		</Unit>
+		<Unit filename="/home/aiden/projects/halitecpp/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
