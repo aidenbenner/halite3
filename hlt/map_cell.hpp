@@ -21,6 +21,13 @@ namespace hlt {
             return !ship && !structure;
         }
 
+        bool is_occupied(PlayerId p) const {
+            if (is_occupied()) {
+                return p == ship->owner;
+            }
+            return false;
+        }
+
         bool is_occupied() const {
             return static_cast<bool>(ship);
         }

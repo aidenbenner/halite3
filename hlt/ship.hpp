@@ -31,6 +31,10 @@ namespace hlt {
             return hlt::command::move(id, Direction::STILL);
         }
 
+        void log(std::string s) {
+            log::log("Ship #" + std::to_string(id) + ": " + s);
+        }
+
         static std::shared_ptr<Ship> _generate(PlayerId player_id);
     };
 }

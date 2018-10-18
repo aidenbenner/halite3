@@ -15,6 +15,10 @@ hlt/log.hpp
 /home/aiden/projects/halitecpp/hlt/log.hpp
 random
 -
+string
+-
+map
+-
 ctime
 -
 
@@ -106,6 +110,8 @@ types.hpp
 map_cell.hpp
 /home/aiden/projects/halitecpp/hlt/map_cell.hpp
 vector
+-
+string
 -
 
 /home/aiden/projects/halitecpp/hlt/input.hpp

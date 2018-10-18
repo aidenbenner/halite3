@@ -47,6 +47,14 @@ namespace hlt {
             return { x, y };
         }
 
+
+#include <string>
+        bool canMove(std::shared_ptr<Ship> ship) {
+            log::log(std::to_string(at(ship)->halite));
+            log::log(std::to_string(ship->halite));
+            return at(ship)->halite * 0.1 <= ship->halite;
+        }
+
         std::vector<Direction> get_unsafe_moves(const Position& source, const Position& destination) {
             const auto& normalized_source = normalize(source);
             const auto& normalized_destination = normalize(destination);
@@ -77,13 +85,34 @@ namespace hlt {
             // get_unsafe_moves normalizes for us
             for (auto direction : get_unsafe_moves(ship->position, destination)) {
                 Position target_pos = ship->position.directional_offset(direction);
-                if (!at(target_pos)->is_occupied()) {
+                return direction;
+                /*if (!at(target_pos)->is_unsafe()) {
                     at(target_pos)->mark_unsafe(ship);
                     return direction;
+                }*/
+            }
+            return Direction::STILL;
+        }
+
+        Position largestInArea(Position p, int r) {
+            return largestInArea(p.x, p.y);
+        }
+
+        Position largestInArea(int x, int y, int r) {
+            int curr_max = 0;
+            int cx = 0;
+            int cy = 0;
+            for (int i = 0; i < 2 * r; i++) {
+                for (int k = 0; k < 2 * r; k++) {
+                    int h = at(x + i - r,y + k - r)->halite;
+                    if (h > curr_max) {
+                        curr_max = h;
+                        cx = x + i - r;
+                        cy = y + k - r;
+                    }
                 }
             }
-
-            return Direction::STILL;
+            return Position {cx, cy};
         }
 
         void _update();
