@@ -2,30 +2,10 @@
 
 #include "types.hpp"
 #include "map_cell.hpp"
-#include "player.hpp"
 
-#include<cassert>
 #include <vector>
-#include <map>
-#include <string>
-#include <unordered_map>
-#include <utility>
-#include <set>
-#include <deque>
-#include <string>
 
-using namespace std;
 namespace hlt {
-
-struct pairhash {
-public:
-  template <typename T, typename U>
-  std::size_t operator()(const std::pair<T, U> &x) const
-  {
-    return std::hash<T>()(x.first) + std::hash<U>()(x.second) * 255;
-  }
-};
-
     struct GameMap {
         int width;
         int height;
@@ -72,6 +52,7 @@ public:
         }
 
 
+#include <string>
         bool canMove(std::shared_ptr<Ship> ship) {
             log::log(std::to_string(at(ship)->halite));
             log::log(std::to_string(ship->halite));
@@ -101,20 +82,11 @@ public:
                 possible_moves.push_back(dy < wrapped_dy ? Direction::NORTH : Direction::SOUTH);
             }
 
-            if (dy > dx && possible_moves.size() >= 2) {
-                auto tmp = possible_moves[0];
-                possible_moves[0] = possible_moves[1];
-                possible_moves[1] = tmp;
-            }
-
             return possible_moves;
         }
 
         Direction naive_navigate(std::shared_ptr<Ship> ship, const Position& destination) {
             // get_unsafe_moves normalizes for us
-            ship->log("navigating");
-            if (true)
-                mincostnav(ship->position, destination);
             for (auto direction : get_unsafe_moves(ship->position, destination)) {
                 //Position target_pos = ship->position.directional_offset(direction);
                 return direction;
@@ -124,59 +96,6 @@ public:
                 }*/
             }
             return Direction::STILL;
-        }
-
-        unordered_map<pair<Position, Position>, pair<int, Direction>, pairhash> mincost;
-        std::pair<int, Direction> mincostnav(const Position& start, const Position& dest) {
-            mincost.clear();
-            return mincostnav2(start,dest);
-        }
-        std::pair<int, Direction> mincostnav2(const Position& start, const Position& dest) {
-            if (start == dest) {
-                return make_pair(0, Direction::STILL);
-            }
-            auto p = make_pair(start, dest);
-            if (mincost.count(p)) {
-                return mincost[p];
-            }
-
-            auto moves = get_unsafe_moves(start, dest);
-            int curr_weight = 666001;
-            auto curr_move = Direction::STILL;
-
-            int ccost = at(start)->cost();
-            for (auto m : moves) {
-                auto curr = mincostnav2(normalize(start.directional_offset(m)), dest);
-                if (curr.first < curr_weight) {
-                    curr_weight = curr.first;
-                    curr_move = curr.second;
-                }
-            }
-            //assert(curr_weight != 666001);
-            if (curr_weight == 666001) curr_weight = 0;
-
-           return mincost[p] = std::make_pair(ccost + curr_weight, curr_move);
-        }
-
-        const int TURN_WEIGHT = 30;
-
-        int costfn(Ship *s, Position shipyard, Position dest) {
-            if (dest == shipyard) return 100000;
-            int cost = 0; // mincostnav(s->position, dest).first;
-
-            int turns_to = calculate_distance(s->position, dest);
-            int turns_back = calculate_distance(dest, shipyard);
-
-            // TODO(@dropoff)
-            int cost_back = 0; //mincostnav(dest, shipyard).first;
-            int halite = at(dest)->halite;
-            if (halite < constants::MAX_HALITE / 10.0) return 8000 - halite + (turns_back + turns_to) * TURN_WEIGHT;
-
-            int out = cost + turns_to * TURN_WEIGHT + turns_back * TURN_WEIGHT - halite * 100 + cost_back;
-            out = max(0, halite - turns_to * TURN_WEIGHT - turns_back * TURN_WEIGHT);
-            out = halite - cost - cost_back;
-            out = halite / 100 -turns_to - turns_back;
-            return -out;
         }
 
         Position largestInArea(Position p, int r) {

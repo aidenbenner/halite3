@@ -39,6 +39,8 @@ void hlt::log::open(int bot_id) {
     log_buffer.clear();
 }
 
+
+
 void hlt::log::log(const std::string& message) {
     if (has_opened) {
         log_file << message << std::endl;

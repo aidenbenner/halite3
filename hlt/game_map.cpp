@@ -1,5 +1,12 @@
 #include "game_map.hpp"
 #include "input.hpp"
+#include <memory>
+
+template<typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
 
 void hlt::GameMap::_update() {
     for (int y = 0; y < height; ++y) {
@@ -7,6 +14,8 @@ void hlt::GameMap::_update() {
             cells[y][x].ship.reset();
         }
     }
+
+    mincost.clear();
 
     int update_count;
     hlt::get_sstream() >> update_count;

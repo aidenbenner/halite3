@@ -21,14 +21,6 @@ namespace hlt {
             return !ship && !structure;
         }
 
-        int cost() {
-            return constants::MOVE_COST_RATIO * halite;
-        }
-
-        int gain() {
-            return constants::EXTRACT_RATIO * halite;
-        }
-
         bool is_occupied(PlayerId p) const {
             if (is_occupied()) {
                 return p == ship->owner;

@@ -15,7 +15,7 @@ namespace hlt {
         bool operator==(const Position& other) const { return x == other.x && y == other.y; }
         bool operator!=(const Position& other) const { return x != other.x || y != other.y; }
 
-        Position directional_offset(Direction d, bool normalize = true) const {
+        Position directional_offset(Direction d) const {
             auto dx = 0;
             auto dy = 0;
             switch (d) {
