@@ -17,6 +17,21 @@ enum ShipState {
     SUPER_RETURN,
 };
 
+Position closest_dropoff(Ship* s, Game *g) {
+    auto p = g->me->shipyard->position;
+    int m = g->game_map->calculate_distance(s->position,p);
+    for (auto d : g->me->dropoffs) {
+        auto currp = d.second->position;
+        int currd = g->game_map->calculate_distance(s->position,currp);
+
+        if (currd < m) {
+            m = currd;
+            p = currp;
+        }
+    }
+    return p;
+}
+
 int main(int argc, char* argv[]) {
     unsigned int rng_seed;
     if (argc > 1) {
@@ -30,7 +45,9 @@ int main(int argc, char* argv[]) {
     // At this point "game" variable is populated with initial map data.
     // This is a good place to do computationally expensive start-up pre-processing.
     // As soon as you call "ready" function below, the 2 second per turn timer will start.
-    game.ready("adbv8");
+    bool is_1v1 = game.players.size() == 2;
+    bool built_dropoff = false;
+    game.ready("adbv9");
 
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
@@ -41,6 +58,7 @@ int main(int argc, char* argv[]) {
         unique_ptr<GameMap>& game_map = game.game_map;
 
         vector<Command> command_queue;
+        unordered_set<Ship*> assigned;
 
         int remaining_turns = constants::MAX_TURNS - game.turn_number;
 
@@ -58,23 +76,18 @@ int main(int argc, char* argv[]) {
             if (!game_map->canMove(ship)) {
                 ship->log("can't move");
                 proposed[ship->position.x][ship->position.y] = 1;
+                command_queue.push_back(ship->stay_still());
+                assigned.insert(ship.get());
             }
             else {
                 ship->log("can move");
             }
         }
 
-
-        unordered_set<Position> claimed;
+        // priority to gathering
         for (const auto& ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             EntityId id = ship->id;
-            ship->log("hit");
-
-            if (!game_map->canMove(ship)) {
-               command_queue.push_back(ship->stay_still());
-                continue;
-            }
 
             if (!stateMp.count(id)) {
                 stateMp[id] = GATHERING;
@@ -82,13 +95,48 @@ int main(int argc, char* argv[]) {
             if (ship->halite >= constants::MAX_HALITE * 0.91) {
                 stateMp[id] = RETURNING;
             }
-            if (ship->position == me->shipyard->position) {
+            if (ship->halite == 0) {
                 stateMp[id] = GATHERING;
             }
             if (remaining_turns < game_map->calculate_distance(ship->position, me->shipyard->position) + 5) {
                 stateMp[id] = SUPER_RETURN;
             }
+        }
 
+        for (const auto& ship_iterator : me->ships) {
+            shared_ptr<Ship> ship = ship_iterator.second;
+            EntityId id = ship->id;
+            if (assigned.count(ship.get())) continue;
+            ShipState state = stateMp[id];
+            if (state == GATHERING) {
+                if (game.turn_number > constants::MAX_TURNS / 2
+                    && game_map->at(ship)->halite > constants::MAX_HALITE / 2
+                    && me->halite >= constants::SHIP_COST + constants::DROPOFF_COST
+                    && !built_dropoff && is_1v1) {
+                    command_queue.push_back(ship->make_dropoff());
+                    assigned.insert(ship.get());
+                    built_dropoff = true;
+                }
+                else if (game_map->at(ship)->halite > constants::MAX_HALITE / 10) {
+                    proposed[ship->position.x][ship->position.y] = 1;
+                    command_queue.push_back(ship->stay_still());
+                    assigned.insert(ship.get());
+                }
+            }
+        }
+
+        unordered_set<Position> claimed;
+        for (const auto& ship_iterator : me->ships) {
+            shared_ptr<Ship> ship = ship_iterator.second;
+            if (assigned.count(ship.get())) continue;
+
+            EntityId id = ship->id;
+            ship->log("hit");
+
+            if (!game_map->canMove(ship)) {
+               command_queue.push_back(ship->stay_still());
+                continue;
+            }
             ShipState state = stateMp[id];
 
             Direction move = Direction::STILL;
@@ -105,9 +153,8 @@ int main(int argc, char* argv[]) {
                         for (int k = 0; k<2 * r; k++) {
                             auto dest = Position(ship->position.x - r + i, ship->position.y - r + k);
                             if (claimed.count(dest)) continue;
-                            int c = game_map->costfn(ship.get(), me->shipyard->position, dest);
-                            // ship->log("test");
-                            // ship->log(to_string(c) + " " + to_string(i) + " " + to_string(k));
+                            // not optimal closest dropoff
+                            int c = game_map->costfn(ship.get(), closest_dropoff(ship.get(), &game), dest);
                             if (c < cost) {
                                 cost = c;
                                 mdest = dest;
@@ -117,9 +164,6 @@ int main(int argc, char* argv[]) {
 
                     // Position dest = game_map->largestInArea(ship->position, 6);
                     claimed.insert(mdest);
-                    //claimed.insert(mdest.directional_offset(Direction::NORTH));
-                    //claimed.insert(mdest.directional_offset(Direction::EAST));
-                    //claimed.insert(mdest.directional_offset(Direction::SOUTH));
                     move = game_map->naive_navigate(ship, mdest);
 
                 } else {
@@ -128,16 +172,29 @@ int main(int argc, char* argv[]) {
             }
             else if (state == SUPER_RETURN) {
                 ship->log("super returning");
-                move = game_map->naive_navigate(ship, me->shipyard->position);
+                if (ship->halite < 200 && is_1v1) {
+                    int p = 0;
+                    if (game.players[0]->id == me->id) {
+                        p++;
+                    }
+                    move = game_map->naive_navigate(ship, game.players[p]->shipyard->position);
+                }
+                else {
+                    move = game_map->naive_navigate(ship, closest_dropoff(ship.get(), &game));
+                }
             }
             else {
                 ship->log("returning");
-                move = game_map->naive_navigate(ship, me->shipyard->position);
+                move = game_map->naive_navigate(ship, closest_dropoff(ship.get(), &game));
             }
             ship->log("calculating proposed");
             auto pos = ship->position;
             pos = game_map->normalize(pos.directional_offset(move));
             bool super_ignore = state == SUPER_RETURN && pos == me->shipyard->position;
+            for (auto d : me->dropoffs) {
+                super_ignore = super_ignore || (state == SUPER_RETURN && pos == d.second->position);
+            }
+
             if (proposed[pos.x][pos.y] && !super_ignore) {
                 ship->log("detected incoming collision ");
                 if (!proposed[ship->position.x][ship->position.y]) {
