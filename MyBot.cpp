@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     // At this point "game" variable is populated with initial map data.
     // This is a good place to do computationally expensive start-up pre-processing.
     // As soon as you call "ready" function below, the 2 second per turn timer will start.
-    game.ready("adbv7");
+    game.ready("adbv8");
 
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
@@ -117,14 +117,10 @@ int main(int argc, char* argv[]) {
 
                     // Position dest = game_map->largestInArea(ship->position, 6);
                     claimed.insert(mdest);
-                    claimed.insert(mdest.directional_offset(Direction::NORTH));
-                    claimed.insert(mdest.directional_offset(Direction::EAST));
-                    claimed.insert(mdest.directional_offset(Direction::SOUTH));
+                    //claimed.insert(mdest.directional_offset(Direction::NORTH));
+                    //claimed.insert(mdest.directional_offset(Direction::EAST));
+                    //claimed.insert(mdest.directional_offset(Direction::SOUTH));
                     move = game_map->naive_navigate(ship, mdest);
-
-                    for (auto a : game_map->get_unsafe_moves(ship->position, mdest)) {
-
-                    }
 
                 } else {
                     move = Direction::STILL;
