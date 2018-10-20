@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     // As soon as you call "ready" function below, the 2 second per turn timer will start.
     bool is_1v1 = game.players.size() == 2;
     bool built_dropoff = false;
-    game.ready("adbv9");
+    game.ready("adbv10");
 
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
@@ -197,7 +197,8 @@ int main(int argc, char* argv[]) {
 
             if (proposed[pos.x][pos.y] && !super_ignore) {
                 ship->log("detected incoming collision ");
-                if (!proposed[ship->position.x][ship->position.y]) {
+                if (!proposed[ship->position.x][ship->position.y] &&
+                        ship->position != me->shipyard->position) {
                     move = Direction::STILL;
                 }
                 else {

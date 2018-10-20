@@ -12,3 +12,5 @@ __pycache__/
 CMakeFiles/*
 old/
 .idea/*
+*.cbp
+benchmarks/*
