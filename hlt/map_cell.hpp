@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include "types.hpp"
 #include "position.hpp"
 #include "ship.hpp"
@@ -22,11 +23,11 @@ namespace hlt {
         }
 
         int cost() {
-            return constants::MOVE_COST_RATIO * halite;
+            return floor(1.0 / constants::MOVE_COST_RATIO * halite);
         }
 
         int gain() {
-            return constants::EXTRACT_RATIO * halite;
+            return floor(1.0 / constants::EXTRACT_RATIO * halite);
         }
 
         bool is_occupied(PlayerId p) const {

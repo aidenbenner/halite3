@@ -134,7 +134,8 @@ int main(int argc, char* argv[]) {
             ship->log("hit");
 
             if (!game_map->canMove(ship)) {
-               command_queue.push_back(ship->stay_still());
+                command_queue.push_back(ship->stay_still());
+                assigned.insert(ship.get());
                 continue;
             }
             ShipState state = stateMp[id];
@@ -149,6 +150,7 @@ int main(int argc, char* argv[]) {
                     int cost = 1e9;
 
                     int r = 32;
+                    game_map->clear_fast_mincostnav();
                     for (int i = 0; i<2 * r; i++) {
                         for (int k = 0; k<2 * r; k++) {
                             auto dest = Position(ship->position.x - r + i, ship->position.y - r + k);
@@ -187,6 +189,7 @@ int main(int argc, char* argv[]) {
                 ship->log("returning");
                 move = game_map->naive_navigate(ship, closest_dropoff(ship.get(), &game));
             }
+
             ship->log("calculating proposed");
             auto pos = ship->position;
             pos = game_map->normalize(pos.directional_offset(move));
@@ -240,3 +243,67 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
+/*
+map<int, int> ship_map;
+map<int, pair<int, int>> last_pos;
+vector<Command> copyCat(Game &game) {
+    shared_ptr<Player> me = game.me;
+    unique_ptr<GameMap>& game_map = game.game_map;
+
+    vector<Command> out;
+    Player *cat = me.get();
+    for (auto p : game.players) {
+        if (p->id != me->id)
+            cat = p.get();
+    }
+
+    set<int> assigned;
+    for (auto s : cat->ships) {
+        if (!ship_map.count(s.first)) {
+            if (s.second->position == cat->shipyard->position) {
+                out.push_back(me->shipyard->spawn());
+                continue;
+            }
+            else {
+                ship_map[s.first] = game_map->at(me->shipyard->position)->ship->id;
+            }
+        }
+        Position last = Position(last_pos[s.first].first, last_pos[s.first].second);
+        auto curr = s.second->position;
+        auto our_ship = me->ships[ship_map[s.first]];
+        assigned.insert(our_ship->id);
+
+        if (last == curr) {
+            out.push_back(our_ship->stay_still());
+        }
+
+        for (int i = 0; i<4; i++) {
+            auto d = ALL_CARDINALS[i];
+            if (last.directional_offset(d) == curr) {
+                if (d == Direction::EAST)
+                    d = Direction::WEST;
+                else if (d == Direction::WEST)
+                    d = Direction::EAST;
+                out.push_back(our_ship->move(d));
+            }
+        }
+        log::log("hit");
+    }
+
+    for (auto s : me->ships) {
+        if (assigned.count(s.first)) {
+            continue;
+        }
+        else {
+            out.push_back(s.second->make_dropoff());
+        }
+    }
+
+    last_pos.clear();
+    for (auto s : cat->ships) {
+        last_pos[s.first] = make_pair(s.second->position.x, s.second->position.y);
+    }
+    return out;
+}
+*/

@@ -110,9 +110,39 @@ public:
             return possible_moves;
         }
 
+        int naive_cost(int starting_halite, Position a, Position b) {
+            if (a == b) return 0;
+            int cost = at(a)->cost();
+            int gain = at(a)->gain();
+            if (cost > starting_halite) {
+                cost -= gain + cost * 4 / 5;
+            }
+            return cost + naive_cost(starting_halite - cost, a.directional_offset(get_unsafe_moves(a,b)[0]), b);
+        }
+
+        int naive_waits(int starting_halite, Position a, Position b) {
+            a = normalize(a);
+            b = normalize(b);
+            if (a == b) return 0;
+            log::log(a);
+            int cost = at(a)->cost();
+            int gain = at(a)->gain();
+            if (cost > starting_halite) {
+                int curr_hal = starting_halite + gain; // - cost * 4 / 5;
+                return 1 + naive_waits(curr_hal + gain,a, b);
+            }
+            if (at(a)->halite > 100) {
+                int curr_hal = starting_halite + gain; // - cost * 4 / 5;
+                return 1 + naive_waits(curr_hal + gain,a, b);
+            }
+            return 1 + naive_waits(starting_halite - cost, a.directional_offset(get_unsafe_moves(a,b)[0]), b);
+        }
+
         Direction naive_navigate(std::shared_ptr<Ship> ship, const Position& destination) {
             // get_unsafe_moves normalizes for us
             ship->log("navigating");
+            if (ship->position == destination)
+                return Direction::STILL;
             if (true)
                 mincostnav(ship->position, destination);
             for (auto direction : get_unsafe_moves(ship->position, destination)) {
@@ -131,6 +161,15 @@ public:
             mincost.clear();
             return mincostnav2(start,dest);
         }
+
+        std::pair<int, Direction> fast_mincostnav(const Position& start, const Position& dest) {
+            return mincostnav2(start,dest);
+        }
+
+        std::pair<int, Direction> clear_fast_mincostnav() {
+            mincost.clear();
+        }
+
         std::pair<int, Direction> mincostnav2(const Position& start, const Position& dest) {
             if (start == dest) {
                 return make_pair(0, Direction::STILL);
@@ -170,14 +209,15 @@ public:
             // TODO(@dropoff)
             int cost_back = 0; //mincostnav(dest, shipyard).first;
             int halite = at(dest)->halite;
-            if (halite < constants::MAX_HALITE / 10.0) return 8000 - halite + (turns_back + turns_to) * TURN_WEIGHT;
+            //if (halite < constants::MAX_HALITE / 10.0) return 8000 - halite + (turns_back + turns_to) * TURN_WEIGHT;
 
             int out = cost + turns_to * TURN_WEIGHT + turns_back * TURN_WEIGHT - halite * 100 + cost_back;
             out = max(0, halite - turns_to * TURN_WEIGHT - turns_back * TURN_WEIGHT);
             out = halite - cost - cost_back;
-            out = halite / 100 -turns_to - turns_back;
+            out = halite - 100 * sqrt(turns_to + turns_back);
             return -out;
         }
+
 
         Position largestInArea(Position p, int r) {
             return largestInArea(p.x, p.y, r);
