@@ -15,6 +15,7 @@ void hlt::GameMap::_update() {
         }
     }
 
+    ncost.clear();
     mincost.clear();
 
     int update_count;

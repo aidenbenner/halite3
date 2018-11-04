@@ -37,6 +37,10 @@ namespace hlt {
             return false;
         }
 
+        bool occupied_by_not(PlayerId p) {
+            return !is_occupied(p) && is_occupied();
+        }
+
         bool is_occupied() const {
             return static_cast<bool>(ship);
         }

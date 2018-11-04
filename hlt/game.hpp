@@ -7,6 +7,8 @@
 #include <vector>
 #include <iostream>
 
+typedef vector<vector<int>> VVI;
+
 namespace hlt {
     struct Game {
         int turn_number;

@@ -13,6 +13,7 @@
 #include <set>
 #include <deque>
 #include <string>
+#include <queue>
 
 using namespace std;
 namespace hlt {
@@ -50,6 +51,46 @@ public:
 
         MapCell* at(const std::shared_ptr<Entity>& entity) {
             return at(entity->position);
+        }
+
+        vector<vector<int>> BFS(Position source) {
+            // dfs out of source to the entire map
+            set<Position> visited;
+
+            vector<vector<int>> dist(width,vector<int>(height,1e8));
+            vector<vector<Position>> parent(width,vector<Position>(height));
+
+            dist[source.x][source.y] = 0;
+
+            vector<Position> frontier;
+            vector<Position> next;
+            next.push_back(source);
+            while(!next.empty()) {
+                frontier = std::move(next);
+                next.clear();
+                while(!frontier.empty()) {
+                    auto p = frontier.back();
+                    frontier.pop_back();
+                    if (visited.count(p)) {
+                        continue;
+                    }
+                    visited.insert(p);
+
+                    for (auto d : ALL_CARDINALS) {
+                        next.push_back(normalize(p.directional_offset(d)));
+                    }
+
+                    for (auto d : ALL_CARDINALS) {
+                        auto f = normalize(p.directional_offset(d));
+                        int c = at(f)->cost() + dist[f.x][f.y];
+                        if (c < dist[p.x][p.y]) {
+                            dist[p.x][p.y] = c;
+                            parent[p.x][p.y] = f;
+                        }
+                    }
+                }
+            }
+            return dist;
         }
 
         int calculate_distance(const Position& source, const Position& target) {
@@ -110,14 +151,30 @@ public:
             return possible_moves;
         }
 
+        void onTurn() {
+            ncost.clear();
+        }
+
+        map<tuple<int,int,int,int>, int> ncost;
         int naive_cost(int starting_halite, Position a, Position b) {
+            a = normalize(a);
+            b = normalize(b);
+            auto t = make_tuple(a.x, a.y, b.x, b.y);
+            if (ncost.count(t)) return ncost[t];
             if (a == b) return 0;
             int cost = at(a)->cost();
             int gain = at(a)->gain();
-            if (cost > starting_halite) {
-                cost -= gain + cost * 4 / 5;
+
+            int mhalite = 999999999;
+            auto pos = a;
+            for (auto d : get_unsafe_moves(a,b)) {
+                if (at(a.directional_offset(d))->halite < mhalite) {
+                    pos = a.directional_offset(d);
+                    mhalite = at(pos)->halite;
+                }
             }
-            return cost + naive_cost(starting_halite - cost, a.directional_offset(get_unsafe_moves(a,b)[0]), b);
+
+            return ncost[t] = cost + naive_cost(starting_halite, pos, b);
         }
 
         int naive_waits(int starting_halite, Position a, Position b) {
@@ -143,8 +200,6 @@ public:
             ship->log("navigating");
             if (ship->position == destination)
                 return Direction::STILL;
-            if (true)
-                mincostnav(ship->position, destination);
             for (auto direction : get_unsafe_moves(ship->position, destination)) {
                 //Position target_pos = ship->position.directional_offset(direction);
                 return direction;
@@ -197,25 +252,41 @@ public:
            return mincost[p] = std::make_pair(ccost + curr_weight, curr_move);
         }
 
+
+        bool is_in_range_of_enemy(Position p, PlayerId pl) {
+            if (at(p)->occupied_by_not(pl)) return true;
+            for (int i = 0; i<4; i++) {
+                auto po = p.directional_offset(ALL_CARDINALS[i]);
+                if (at(po)->occupied_by_not(pl)) return true;
+            }
+            return false;
+        }
+
         const int TURN_WEIGHT = 30;
 
-        int costfn(Ship *s, Position shipyard, Position dest) {
+        int BLOCK_SIZE = 1;
+        double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest) {
             if (dest == shipyard) return 100000;
-            int cost = 0; // mincostnav(s->position, dest).first;
 
             int turns_to = calculate_distance(s->position, dest);
             int turns_back = calculate_distance(dest, shipyard);
+            int turns = turns_to + turns_back;
 
-            // TODO(@dropoff)
-            int cost_back = 0; //mincostnav(dest, shipyard).first;
             int halite = at(dest)->halite;
-            //if (halite < constants::MAX_HALITE / 10.0) return 8000 - halite + (turns_back + turns_to) * TURN_WEIGHT;
 
-            int out = cost + turns_to * TURN_WEIGHT + turns_back * TURN_WEIGHT - halite * 100 + cost_back;
-            out = max(0, halite - turns_to * TURN_WEIGHT - turns_back * TURN_WEIGHT);
-            out = halite - cost - cost_back;
-            out = halite - 100 * sqrt(turns_to + turns_back);
+            double out = (sum_around_point(dest, BLOCK_SIZE) / 8 + halite - to_cost - home_cost) / turns;
             return -out;
+        }
+
+        int sum_around_point(Position p, int r) {
+            int sum = 0;
+            for (int i = 0; i<2 * r; i++) {
+                for (int k = 0; k< 2 * r; k++) {
+                    auto z = normalize(Position(p.x - r + i, p.y -r + k));
+                    sum += at(z)->halite;
+                }
+            }
+            return sum;
         }
 
 

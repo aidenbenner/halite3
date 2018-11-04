@@ -11,11 +11,13 @@ namespace hlt {
         int y;
 
         Position(int x, int y) : x(x), y(y) {}
+        Position() : x(-1), y(-1) {}
 
         bool operator==(const Position& other) const { return x == other.x && y == other.y; }
         bool operator!=(const Position& other) const { return x != other.x || y != other.y; }
+        bool operator<(const Position& other) const { if (x == other.x) return y < other.y; return x < other.x;}
 
-        Position directional_offset(Direction d, bool normalize = true) const {
+        Position directional_offset(Direction d) const {
             auto dx = 0;
             auto dy = 0;
             switch (d) {
