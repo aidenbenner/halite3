@@ -77,28 +77,43 @@ int main(int argc, char* argv[]) {
 
     bool is_1v1 = game.players.size() == 2;
     bool collision = !is_1v1;
+    bool want_to_drop = false;
 
-    game.ready("adbv16");
+    game.ready("adbv17");
 
     map<EntityId, ShipState> stateMp;
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
+    vector<int> halite_at_turn;
+    int last_hal = 0;
     for (;;) {
         game.update_frame();
         shared_ptr<Player> me = game.me;
+        shared_ptr<Player> opponent = game.players[0];
+        if (opponent->id == me->id)
+            opponent = game.players[1];
+
         unique_ptr<GameMap>& game_map = game.game_map;
+        int ship_count = 0;
+        for (auto p : game.players) {
+            ship_count += p->ships.size();
+        }
+        ship_count += max(ship_count, 1);
+        if (game.turn_number % 20 == 0) {
+            halite_at_turn.push_back((game_map->get_total_halite() - last_hal) / ship_count);
+            last_hal = game_map->get_total_halite();
+        }
 
         vector<Command> command_queue;
         unordered_set<Ship*> assigned;
+        me->dropoffs[-3000] = make_shared<Dropoff>(me->id, -3000, me->shipyard->position.x, me->shipyard->position.y);
 
         int remaining_turns = constants::MAX_TURNS - game.turn_number;
 
         vector<vector<int>> proposed(game_map->width, vector<int>(game_map->height));
         map<EntityId , vector<Direction>> optionsMap;
 
-        BFSR home_cost_map = game_map->BFS(me->shipyard->position);
         map<Position, BFSR> ship_to_dist;
         ship_to_dist.clear();
-        ship_to_dist[me->shipyard->position] = home_cost_map;
         for (auto s : me->ships) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
         }
@@ -126,7 +141,7 @@ int main(int argc, char* argv[]) {
                 stateMp[id] = GATHERING;
             }
             if (ship->halite >= constants::MAX_HALITE * 0.70) {
-                if (game.turn_number > 100) {
+                if (game.turn_number > constants::MAX_TURNS * 0.75) {
                     if (ship->halite >= constants::MAX_HALITE * 0.90) {
                         stateMp[id] = RETURNING;
                     }
@@ -219,23 +234,25 @@ int main(int argc, char* argv[]) {
                 };*/
 
                 vector<Direction> options;
-                VVI& dist = ship_to_dist[ship->position].dist;
-                VVI& dropoff_dist = ship_to_dist[closest_dropoff(ship.get(), &game)].dist;
-                for (int i = 0; i<game_map->width; i++) for (int k = 0; k<game_map->width; k++) {
-                        auto dest = Position(i, k);
-                        if (claimed.count(dest)) continue;
+                for (auto d : me->dropoffs) {
+                    VVI& dist = ship_to_dist[ship->position].dist;
+                    VVI& dropoff_dist = ship_to_dist[d.second->position].dist;
+                    for (int i = 0; i<game_map->width; i++) for (int k = 0; k<game_map->width; k++) {
+                            auto dest = Position(i, k);
+                            if (claimed.count(dest)) continue;
 
-                        // TODO(abenner) dropoffs
-                        int cost_to = dist[dest.x][dest.y];
-                        int cost_from = dropoff_dist[dest.x][dest.y];
-                        double c = game_map->costfn(ship.get(), cost_to, cost_from, closest_dropoff(ship.get(), &game), dest, me->id);
-                        // log::log('cost', c);
-                        if (c < cost) {
-                            cost = c;
-                            mdest = dest;
-                            next = ship.get();
+                            // TODO(abenner) dropoffs
+                            int cost_to = dist[dest.x][dest.y];
+                            int cost_from = dropoff_dist[dest.x][dest.y];
+                            double c = game_map->costfn(ship.get(), cost_to, cost_from, closest_dropoff(ship.get(), &game), dest, me->id, is_1v1);
+                            // log::log('cost', c);
+                            if (c < cost) {
+                                cost = c;
+                                mdest = dest;
+                                next = ship.get();
+                            }
                         }
-                    }
+                }
             }
 
             if (next == nullptr) break;
@@ -308,24 +325,37 @@ int main(int argc, char* argv[]) {
             command_queue.push_back(ship->move(selected_move));
         }
 
-        int sum = 0;
-        for (int i = 0; i < game_map->width; i++) {
-            for (int k = 0; k < game_map->width; k++) {
-                sum += proposed[i][k];
-            }
-        }
-        log::log(sum, " ", me->ships.size());
-
         auto yardpos = me->shipyard->position;
+        int save_to = 1000;
+        if (want_to_drop) {
+            save_to += constants::DROPOFF_COST;
+        }
+
+        int ship_target = 10;
+        if (is_1v1) {
+            ship_target = max(10, (int)opponent->ships.size() + 1);
+        }
         if (
-            remaining_turns > 220 &&
-            me->halite >= constants::SHIP_COST &&
+            remaining_turns > 100 &&
+            me->halite >= save_to &&
             !proposed[yardpos.x][yardpos.y])
         {
-            command_queue.push_back(me->shipyard->spawn());
+            if (remaining_turns > 220 || (int)me->ships.size() < ship_target) {
+                command_queue.push_back(me->shipyard->spawn());
+            }
+        }
+
+        if (remaining_turns == 1) {
+            log::log("Halite at turn: ");
+            int i = 0;
+            for (auto a : halite_at_turn) {
+                i++;
+                log::log(to_string(i) + "," + to_string(a));
+            }
         }
 
         if (!game.end_turn(command_queue)) {
+
             break;
         }
     }

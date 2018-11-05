@@ -308,8 +308,18 @@ public:
 
         const int TURN_WEIGHT = 30;
 
+        int get_total_halite() {
+            int sum = 0;
+            for (int i = 0; i<width; i++) {
+                for (int k= 0; k<height; k++) {
+                    sum += at(i,k)->halite;
+                }
+            }
+            return sum;
+        }
+
         int BLOCK_SIZE = 1;
-        double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid) {
+        double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1) {
             if (dest == shipyard) return 10000000;
 
             int turns_to = calculate_distance(s->position, dest);
@@ -322,6 +332,7 @@ public:
                     halite *= 2;
                 }
             }
+
 
             double out = (halite - to_cost - home_cost) / (double)turns;
             return -out;
