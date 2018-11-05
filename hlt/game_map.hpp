@@ -55,7 +55,6 @@ public:
         }
 
         Direction getDirectDiff(Position a, Position b) {
-            log::log(a, " ", b);
             if (a == b) {
                 return Direction::STILL;
             }
@@ -115,7 +114,6 @@ public:
             }
             Position curr = dest;
             Direction move = Direction::STILL;
-            log::log(start, "------ ", dest);
             while (curr != start) {
                 auto tmp = pos[curr.x][curr.y];
                 move = getDirectDiff(tmp, curr);
@@ -311,7 +309,7 @@ public:
         const int TURN_WEIGHT = 30;
 
         int BLOCK_SIZE = 1;
-        double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest) {
+        double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid) {
             if (dest == shipyard) return 10000000;
 
             int turns_to = calculate_distance(s->position, dest);
@@ -319,9 +317,32 @@ public:
             int turns = turns_to + turns_back;
 
             int halite = at(dest)->halite;
+            if (turns_to < 3) {
+                if (is_inspired(dest, pid)) {
+                    halite *= 2;
+                }
+            }
 
             double out = (halite - to_cost - home_cost) / (double)turns;
             return -out;
+        }
+
+        map<Position, bool> inspiredMemo;
+        bool is_inspired(Position p, PlayerId id) {
+            if (inspiredMemo.count(p)) return inspiredMemo[p];
+            int radius = 4;
+            int enemies = 0;
+            for (int i = 0; i<radius * 2; i++) {
+                for (int k = 0; k<radius * 2; k++) {
+                    auto c = Position {p.x - radius + i, p.y - radius + k};
+                    if (this->calculate_distance(c, p) < radius) {
+                        if (at(c)->occupied_by_not(id)) {
+                            enemies++;
+                        }
+                    }
+                }
+            }
+            return inspiredMemo[p] = enemies >= 2;
         }
 
         int sum_around_point(Position p, int r) {

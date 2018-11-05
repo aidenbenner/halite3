@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
     bool collision = !is_1v1;
     bool built_dropoff = false;
 
-    game.ready("adbv13");
+    game.ready("adbv14");
 
 
     map<EntityId, ShipState> stateMp;
@@ -174,9 +174,6 @@ int main(int argc, char* argv[]) {
             shared_ptr<Ship> ship = ship_iterator.second;
             if (assigned.count(ship.get())) continue;
 
-            EntityId id = ship->id;
-            ShipState state = stateMp[id];
-
             auto mdest = closest_dropoff(ship.get(), &game);
             vector<Direction> options;
             VVP& pars = ship_to_dist[ship->position].parent;
@@ -225,7 +222,7 @@ int main(int argc, char* argv[]) {
                         // TODO(abenner) dropoffs
                         int cost_to = dist[dest.x][dest.y];
                         int cost_from = dropoff_dist[dest.x][dest.y];
-                        double c = game_map->costfn(ship.get(), cost_to, cost_from, closest_dropoff(ship.get(), &game), dest);
+                        double c = game_map->costfn(ship.get(), cost_to, cost_from, closest_dropoff(ship.get(), &game), dest, me->id);
                         // log::log('cost', c);
                         if (c < cost) {
                             cost = c;
@@ -239,9 +236,9 @@ int main(int argc, char* argv[]) {
             added.insert(next->id);
             claimed.insert(mdest);
 
-            VVP& pars = ship_to_dist[next->position].parent;
+            // VVP& pars = ship_to_dist[next->position].parent;
             vector<Direction> options;
-            options = game_map->minCostOptions(pars, next->position, mdest);
+            options = game_map->get_unsafe_moves(next->position, mdest);
             optionsMap[next->id] = options;
         }
 

@@ -17,6 +17,7 @@ void hlt::GameMap::_update() {
 
     ncost.clear();
     mincost.clear();
+    inspiredMemo.clear();
 
     int update_count;
     hlt::get_sstream() >> update_count;
