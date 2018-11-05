@@ -319,7 +319,7 @@ public:
         }
 
         int BLOCK_SIZE = 1;
-        double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1) {
+        inline double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1) {
             if (dest == shipyard) return 10000000;
 
             int turns_to = calculate_distance(s->position, dest);

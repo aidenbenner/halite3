@@ -79,12 +79,11 @@ int main(int argc, char* argv[]) {
     bool collision = !is_1v1;
     bool want_to_drop = false;
 
-    game.ready("adbv17");
+    game.ready("adbv18");
 
     map<EntityId, ShipState> stateMp;
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     vector<int> halite_at_turn;
-    int last_hal = 0;
     for (;;) {
         game.update_frame();
         shared_ptr<Player> me = game.me;
@@ -93,7 +92,7 @@ int main(int argc, char* argv[]) {
             opponent = game.players[1];
 
         unique_ptr<GameMap>& game_map = game.game_map;
-        int ship_count = 0;
+        /*int ship_count = 0;
         for (auto p : game.players) {
             ship_count += p->ships.size();
         }
@@ -101,7 +100,7 @@ int main(int argc, char* argv[]) {
         if (game.turn_number % 20 == 0) {
             halite_at_turn.push_back((game_map->get_total_halite() - last_hal) / ship_count);
             last_hal = game_map->get_total_halite();
-        }
+        }*/
 
         vector<Command> command_queue;
         unordered_set<Ship*> assigned;
@@ -140,9 +139,9 @@ int main(int argc, char* argv[]) {
             if (!stateMp.count(id)) {
                 stateMp[id] = GATHERING;
             }
-            if (ship->halite >= constants::MAX_HALITE * 0.70) {
-                if (game.turn_number > constants::MAX_TURNS * 0.75) {
-                    if (ship->halite >= constants::MAX_HALITE * 0.90) {
+            if (ship->halite >= constants::MAX_HALITE * 0.75) {
+                if (game.turn_number > constants::MAX_TURNS * 0.25) {
+                    if (ship->halite >= constants::MAX_HALITE * 0.95) {
                         stateMp[id] = RETURNING;
                     }
                 }
@@ -244,7 +243,7 @@ int main(int argc, char* argv[]) {
                             // TODO(abenner) dropoffs
                             int cost_to = dist[dest.x][dest.y];
                             int cost_from = dropoff_dist[dest.x][dest.y];
-                            double c = game_map->costfn(ship.get(), cost_to, cost_from, closest_dropoff(ship.get(), &game), dest, me->id, is_1v1);
+                            double c = game_map->costfn(ship.get(), cost_to, cost_from, d.second->position, dest, me->id, is_1v1);
                             // log::log('cost', c);
                             if (c < cost) {
                                 cost = c;
@@ -333,7 +332,7 @@ int main(int argc, char* argv[]) {
 
         int ship_target = 10;
         if (is_1v1) {
-            ship_target = max(10, (int)opponent->ships.size() + 1);
+            ship_target = max(10, (int)opponent->ships.size());
         }
         if (
             remaining_turns > 100 &&
