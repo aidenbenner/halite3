@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
     bool is_1v1 = game.players.size() == 2;
     bool collision = !is_1v1;
 
-    game.ready("adbv15");
+    game.ready("adbv16");
 
     map<EntityId, ShipState> stateMp;
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
                 stateMp[id] = GATHERING;
             }
             if (remaining_turns < game_map->calculate_distance(ship->position, closest_dropoff(ship.get(), &game))
-            + game_map->width / 6) {
+            + game_map->width / 6 + 0.3 * me->ships.size()) {
                 stateMp[id] = SUPER_RETURN;
             }
         }
@@ -195,7 +195,6 @@ int main(int argc, char* argv[]) {
             auto mdest = Position(0,0);
             double cost = 1e9;
 
-            log::log("hit");
             for (auto s : me->ships) {
                 shared_ptr<Ship> ship = s.second;
                 if (assigned.count(ship.get())) continue;
