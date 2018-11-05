@@ -4,8 +4,9 @@
 #include "map_cell.hpp"
 #include "player.hpp"
 
-#include<cassert>
+#include <cassert>
 #include <vector>
+#include <algorithm>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -114,8 +115,6 @@ public:
 
 
         bool canMove(std::shared_ptr<Ship> ship) {
-            log::log(std::to_string(at(ship)->halite));
-            log::log(std::to_string(ship->halite));
             return at(ship)->halite * 0.1 <= ship->halite;
         }
 
@@ -163,7 +162,7 @@ public:
             if (ncost.count(t)) return ncost[t];
             if (a == b) return 0;
             int cost = at(a)->cost();
-            int gain = at(a)->gain();
+            //int gain = at(a)->gain();
 
             int mhalite = 999999999;
             auto pos = a;
@@ -181,7 +180,6 @@ public:
             a = normalize(a);
             b = normalize(b);
             if (a == b) return 0;
-            log::log(a);
             int cost = at(a)->cost();
             int gain = at(a)->gain();
             if (cost > starting_halite) {
@@ -221,7 +219,7 @@ public:
             return mincostnav2(start,dest);
         }
 
-        std::pair<int, Direction> clear_fast_mincostnav() {
+        void clear_fast_mincostnav() {
             mincost.clear();
         }
 
@@ -262,11 +260,24 @@ public:
             return false;
         }
 
+        int get_halite_percentile(double percentile) {
+            std::vector<int> hal;
+            for (int i = 0; i < width; i++) {
+                for (int k = 0; k < height; k++) {
+                    hal.push_back(at(i, k)->halite);
+                }
+            }
+            std::sort(hal.begin(), hal.end());
+
+            int out = hal[percentile * hal.size()];
+            return out;
+        }
+
         const int TURN_WEIGHT = 30;
 
         int BLOCK_SIZE = 1;
         double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest) {
-            if (dest == shipyard) return 100000;
+            if (dest == shipyard) return 10000000;
 
             int turns_to = calculate_distance(s->position, dest);
             int turns_back = calculate_distance(dest, shipyard);
@@ -274,7 +285,7 @@ public:
 
             int halite = at(dest)->halite;
 
-            double out = (sum_around_point(dest, BLOCK_SIZE) / 8 + halite - to_cost - home_cost) / turns;
+            double out = (halite - to_cost - home_cost) / (double)turns;
             return -out;
         }
 
