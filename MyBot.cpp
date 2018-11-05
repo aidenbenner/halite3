@@ -77,10 +77,8 @@ int main(int argc, char* argv[]) {
 
     bool is_1v1 = game.players.size() == 2;
     bool collision = !is_1v1;
-    bool built_dropoff = false;
 
-    game.ready("adbv14");
-
+    game.ready("adbv15");
 
     map<EntityId, ShipState> stateMp;
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
@@ -127,11 +125,15 @@ int main(int argc, char* argv[]) {
             if (!stateMp.count(id)) {
                 stateMp[id] = GATHERING;
             }
-            if (game_map->at(ship->position)->halite > 100) {
-                stateMp[id] = GATHERING;
-            }
-            if (ship->halite >= constants::MAX_HALITE * 0.90) {
-                stateMp[id] = RETURNING;
+            if (ship->halite >= constants::MAX_HALITE * 0.70) {
+                if (game.turn_number > 100) {
+                    if (ship->halite >= constants::MAX_HALITE * 0.90) {
+                        stateMp[id] = RETURNING;
+                    }
+                }
+                else {
+                    stateMp[id] = RETURNING;
+                }
             }
             if (ship->halite == 0) {
                 stateMp[id] = GATHERING;
@@ -150,19 +152,24 @@ int main(int argc, char* argv[]) {
             EntityId id = ship->id;
             if (assigned.count(ship.get())) continue;
             ShipState state = stateMp[id];
-            if (state == GATHERING) {
+            if (state == GATHERING || state == RETURNING) {
                 // dropoff condition
+                int dist = game_map->calculate_distance(ship->position, closest_dropoff(ship.get(), &game));
+                int sum_halite = game_map->sum_around_point(ship->position, 5);
                 if (game.turn_number > constants::MAX_TURNS / 2
                     && game_map->at(ship)->halite > constants::MAX_HALITE / 2
                     && me->halite >= constants::SHIP_COST + constants::DROPOFF_COST
-                    && !built_dropoff
-                    && is_1v1) {
+                    && dist > game_map->width / 5
+                    && sum_halite > 13000) {
+                    me->dropoffs[(int)-ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x, ship->position.y);
                     command_queue.push_back(ship->make_dropoff());
                     assigned.insert(ship.get());
-                    built_dropoff = true;
                 }
                 // TODO(abenner) median
                 else if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.50)) {
+                    if (state == RETURNING && ship->halite >= 899) {
+                        continue;
+                    }
                     proposed[ship->position.x][ship->position.y] = 1;
                     command_queue.push_back(ship->stay_still());
                     assigned.insert(ship.get());
