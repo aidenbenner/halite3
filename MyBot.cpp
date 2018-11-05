@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
     bool collision = !is_1v1;
     bool built_dropoff = false;
 
-    game.ready("adbv12");
+    game.ready("adbv13");
 
 
     map<EntityId, ShipState> stateMp;
@@ -97,8 +97,8 @@ int main(int argc, char* argv[]) {
         vector<vector<int>> proposed(game_map->width, vector<int>(game_map->height));
         map<EntityId , vector<Direction>> optionsMap;
 
-        VVI home_cost_map = game_map->BFS(me->shipyard->position);
-        map<Position, VVI> ship_to_dist;
+        BFSR home_cost_map = game_map->BFS(me->shipyard->position);
+        map<Position, BFSR> ship_to_dist;
         ship_to_dist.clear();
         ship_to_dist[me->shipyard->position] = home_cost_map;
         for (auto s : me->ships) {
@@ -177,12 +177,10 @@ int main(int argc, char* argv[]) {
             EntityId id = ship->id;
             ShipState state = stateMp[id];
 
+            auto mdest = closest_dropoff(ship.get(), &game);
             vector<Direction> options;
-            if (state == SUPER_RETURN) {
-                options = game_map->get_unsafe_moves(ship->position, closest_dropoff(ship.get(), &game));
-            } else {
-                options = game_map->get_unsafe_moves(ship->position, closest_dropoff(ship.get(), &game));
-            }
+            VVP& pars = ship_to_dist[ship->position].parent;
+            options = game_map->minCostOptions(pars, ship->position, mdest);
             optionsMap[ship->id] = options;
         }
 
@@ -218,8 +216,8 @@ int main(int argc, char* argv[]) {
                 };*/
 
                 vector<Direction> options;
-                VVI& dist = ship_to_dist[ship->position];
-                VVI& dropoff_dist = ship_to_dist[closest_dropoff(ship.get(), &game)];
+                VVI& dist = ship_to_dist[ship->position].dist;
+                VVI& dropoff_dist = ship_to_dist[closest_dropoff(ship.get(), &game)].dist;
                 for (int i = 0; i<game_map->width; i++) for (int k = 0; k<game_map->width; k++) {
                         auto dest = Position(i, k);
                         if (claimed.count(dest)) continue;
@@ -235,15 +233,15 @@ int main(int argc, char* argv[]) {
                             next = ship.get();
                         }
                     }
-
             }
 
             if (next == nullptr) break;
             added.insert(next->id);
             claimed.insert(mdest);
 
+            VVP& pars = ship_to_dist[next->position].parent;
             vector<Direction> options;
-            options = game_map->get_unsafe_moves(next->position, mdest);
+            options = game_map->minCostOptions(pars, next->position, mdest);
             optionsMap[next->id] = options;
         }
 

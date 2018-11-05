@@ -54,7 +54,22 @@ public:
             return at(entity->position);
         }
 
-        vector<vector<int>> BFS(Position source) {
+        Direction getDirectDiff(Position a, Position b) {
+            log::log(a, " ", b);
+            if (a == b) {
+                return Direction::STILL;
+            }
+            for (auto d : ALL_CARDINALS) {
+                if (normalize(a.directional_offset(d)) == b) {
+                    return d;
+                }
+            }
+            assert(false);
+            return Direction::STILL;
+        }
+
+
+        BFSR BFS(Position source) {
             // dfs out of source to the entire map
             set<Position> visited;
 
@@ -91,7 +106,27 @@ public:
                     }
                 }
             }
-            return dist;
+            return BFSR{dist, parent};
+        }
+
+        vector<Direction> minCostOptions(VVP pos, Position start, Position dest) {
+            if (start == dest) {
+                return vector<Direction>(1, Direction::STILL);
+            }
+            Position curr = dest;
+            Direction move = Direction::STILL;
+            log::log(start, "------ ", dest);
+            while (curr != start) {
+                auto tmp = pos[curr.x][curr.y];
+                move = getDirectDiff(tmp, curr);
+                curr = tmp;
+            }
+
+            vector<Direction> opts;
+            opts.push_back(move);
+            auto others = get_unsafe_moves(start, dest);
+            opts.insert(opts.end(), others.begin(), others.end());
+            return opts;
         }
 
         int calculate_distance(const Position& source, const Position& target) {
