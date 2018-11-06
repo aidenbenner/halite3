@@ -360,11 +360,30 @@ public:
             int sum = 0;
             for (int i = 0; i<2 * r; i++) {
                 for (int k = 0; k< 2 * r; k++) {
-                    auto z = normalize(Position(p.x - r + i, p.y -r + k));
-                    sum += at(z)->halite;
+                    auto end = Position(p.x - r + i, p.y -r + k);
+                    if (calculate_distance(p, end) <= r) {
+                        auto z = normalize(end);
+                        sum += at(z)->halite;
+                    }
                 }
             }
             return sum;
+        }
+
+        float avg_around_point(Position p, int r) {
+            int sum = 0;
+            int count = 0;
+            for (int i = 0; i<2 * r; i++) {
+                for (int k = 0; k< 2 * r; k++) {
+                    auto end = Position(p.x - r + i, p.y -r + k);
+                    if (calculate_distance(p, end) <= r) {
+                        auto z = normalize(end);
+                        sum += at(z)->halite;
+                        count++;
+                    }
+                }
+            }
+            return sum / (float)count;
         }
 
 

@@ -151,19 +151,21 @@ int main(int argc, char* argv[]) {
             if (state == GATHERING || state == RETURNING) {
                 // dropoff condition
                 int dist = game_map->calculate_distance(ship->position, closest_dropoff(ship->position, &game));
-                int sum_halite = game_map->sum_around_point(ship->position, 5);
-                if (game.turn_number > constants::MAX_TURNS / 2
-                    && game_map->at(ship)->halite > constants::MAX_HALITE / 2
-                    && me->halite >= constants::SHIP_COST + constants::DROPOFF_COST
-                    && dist > game_map->width / 5
-                    && sum_halite > 13000) {
-                    me->dropoffs[(int)-ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x, ship->position.y);
-                    command_queue.push_back(ship->make_dropoff());
-                    assigned.insert(ship.get());
-                    me->halite -= 4000;
+                float sum_halite = game_map->sum_around_point(ship->position, 5);
+                if (remaining_turns > 100
+                    && dist > 20
+                    && sum_halite > 10141) {
+                    if (me->halite >= constants::DROPOFF_COST) {
+                        me->dropoffs[(int)-ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x, ship->position.y);
+                        command_queue.push_back(ship->make_dropoff());
+                        assigned.insert(ship.get());
+                        closestDropMp.clear();
+                        me->halite -= 4000;
+                        continue;
+                    }
                 }
                 // TODO(abenner) median
-                else if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.50)) {
+                if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.50)) {
                     if (state == RETURNING && ship->halite >= 899) {
                         continue;
                     }
@@ -186,14 +188,12 @@ int main(int argc, char* argv[]) {
         }
 
         // Fill ship costs
-        typedef map<double, Position> CostMap;
         struct Cost {
             Position dest;
             Ship* s;
         };
         map<double, VC<Cost>> costs;
         for (auto s : me->ships) {
-            log::log("hit");
             shared_ptr<Ship> ship = s.second;
             if (assigned.count(ship.get())) continue;
 
@@ -222,7 +222,6 @@ int main(int argc, char* argv[]) {
         auto cost_itr = costs.begin();
         while(cost_itr != costs.end()) {
             for (auto cost : cost_itr->second) {
-                log::log(cost.dest);
                 if (added.count(cost.s->id)) continue;
                 if (claimed.count(cost.dest)) continue;
 
