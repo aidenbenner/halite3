@@ -73,7 +73,10 @@ Position getBestDropoff(Game &g) {
                     ship_pos = close->position;
                 }
                 int d_to_ship = g.game_map->calculate_distance(ship_pos, curr);
-                if ((close == nullptr || d_to_ship < 30) && dist_to_yard < g.game_map->width / 2) {
+
+
+                int modifier = g.players.size();
+                if ((close == nullptr || d_to_ship < 30) && dist_to_yard < g.game_map->width / modifier) {
                     if (c > maxz) {
                         maxz = c;
                         out = curr;
