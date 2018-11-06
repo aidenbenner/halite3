@@ -370,6 +370,21 @@ public:
             return sum;
         }
 
+        Position getBestDropoff() {
+            Position out;
+            int maxz = -1;
+            for (int i = 0; i<width; i++) {
+                for (int k = 0; k<height; k++) {
+                    int c = sum_around_point(out, 5);
+                    if (c > maxz) {
+                        c = maxz;
+                        out = Position(i, k);
+                    }
+                }
+            }
+            return out;
+        }
+
         float avg_around_point(Position p, int r) {
             int sum = 0;
             int count = 0;

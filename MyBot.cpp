@@ -16,6 +16,7 @@ enum ShipState {
     EXPLORING,
     RETURNING,
     SUPER_RETURN,
+    CHOOSEN_DROP,
 };
 
 enum OrderType {
@@ -41,6 +42,48 @@ Position closest_dropoff(Position pos, Game *g) {
     return closestDropMp[pos] = p;
 }
 
+Ship* getClosestShip(Position pos, Player &p, GameMap &g) {
+    int dist = 10000000;
+    Ship* soj = nullptr;
+    for (auto s : p.ships) {
+        int curr =  g.calculate_distance(pos, s.second->position);
+        if (curr < dist) {
+            dist = curr;
+            soj = s.second.get();
+        }
+    }
+    return soj;
+}
+
+const int DROPOFF_THRESH = 8141;
+Position getBestDropoff(Game &g) {
+    Position out = Position(-1, -1);
+    int maxz = -1;
+    for (int i = 0; i<g.game_map->width; i++) {
+        for (int k = 0; k<g.game_map->height; k++) {
+            auto curr = Position(i, k);
+            int c = g.game_map->sum_around_point(curr, 5);
+            if (c < DROPOFF_THRESH) continue;
+            int dist = g.game_map->calculate_distance(curr, closest_dropoff(curr, &g));
+            if (dist > 21) {
+                Ship* close = getClosestShip(curr, *g.me.get(), *g.game_map.get());
+                auto ship_pos = g.me->shipyard->position;
+                int dist_to_yard = g.game_map->calculate_distance(ship_pos, curr);
+                if (close != nullptr) {
+                    ship_pos = close->position;
+                }
+                int d_to_ship = g.game_map->calculate_distance(ship_pos, curr);
+                if ((close == nullptr || d_to_ship < 30) && dist_to_yard < g.game_map->width / 2) {
+                    if (c > maxz) {
+                        maxz = c;
+                        out = curr;
+                    }
+                }
+            }
+        }
+    }
+    return out;
+}
 
 int main(int argc, char* argv[]) {
     unsigned int rng_seed;
@@ -56,16 +99,17 @@ int main(int argc, char* argv[]) {
     // This is a good place to do computationally expensive start-up pre-processing.
     // As soon as you call "ready" function below, the 2 second per turn timer will start.
 
-
     bool is_1v1 = game.players.size() == 2;
     bool collision = !is_1v1;
-    bool want_to_drop = false;
 
-    game.ready("adbv20");
+    game.ready("adbv21");
 
     map<EntityId, ShipState> stateMp;
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     vector<int> halite_at_turn;
+    const int FIRST_DROP = 75;
+    int last_drop_off = 0;
+    Position chosen_drop = getBestDropoff(game);
     for (;;) {
         game.update_frame();
         closestDropMp.clear();
@@ -75,15 +119,7 @@ int main(int argc, char* argv[]) {
             opponent = game.players[1];
 
         unique_ptr<GameMap>& game_map = game.game_map;
-        /*int ship_count = 0;
-        for (auto p : game.players) {
-            ship_count += p->ships.size();
-        }
-        ship_count += max(ship_count, 1);
-        if (game.turn_number % 20 == 0) {
-            halite_at_turn.push_back((game_map->get_total_halite() - last_hal) / ship_count);
-            last_hal = game_map->get_total_halite();
-        }*/
+
 
         vector<Command> command_queue;
         unordered_set<Ship*> assigned;
@@ -94,14 +130,7 @@ int main(int argc, char* argv[]) {
         vector<vector<int>> proposed(game_map->width, vector<int>(game_map->height));
         map<EntityId , vector<Direction>> optionsMap;
 
-        map<Position, BFSR> ship_to_dist;
-        ship_to_dist.clear();
-        for (auto s : me->ships) {
-            ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
-        }
-        for (auto s : me->dropoffs) {
-            ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
-        }
+
 
         // ROLE ASSIGNMENT
         // ships that can't move are highest priority
@@ -114,10 +143,47 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        // CHOSEN DROP
+        if (last_drop_off - game.turn_number == 0 || game.turn_number < FIRST_DROP) {
+            chosen_drop = getBestDropoff(game);
+        }
+
+        Ship* chosen_ship = getClosestShip(chosen_drop, *me.get(), *game_map);
+        if (chosen_ship != nullptr)
+            log::log(chosen_ship->id);
+
+        bool save_for_drop = false;
+        if (chosen_ship != nullptr && !assigned.count(chosen_ship)) {
+            if (chosen_drop == Position(-1, -1)) {
+
+            }
+            else if (game.turn_number - last_drop_off > FIRST_DROP && remaining_turns > 80) {
+                stateMp[chosen_ship->id] = CHOOSEN_DROP;
+                if (chosen_ship->position == chosen_drop) {
+                    save_for_drop = true;
+                    if (me->halite > 4000) {
+                        last_drop_off = game.turn_number + 1;
+                        command_queue.push_back(chosen_ship->make_dropoff());
+                        assigned.insert(chosen_ship);
+                        me->halite -= 4000;
+                    }
+                }
+                else {
+                    optionsMap[chosen_ship->id] = game_map->get_unsafe_moves(chosen_ship->position, chosen_drop);
+                }
+                if (me->halite > 4000) {
+                    me->dropoffs[-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
+                }
+                // me->dropoffs[(int)-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
+                closestDropMp.clear();
+            }
+        }
+
         // priority to gathering
         for (const auto& ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             EntityId id = ship->id;
+            if (stateMp[id] == CHOOSEN_DROP) continue;
 
             if (!stateMp.count(id)) {
                 stateMp[id] = GATHERING;
@@ -146,6 +212,7 @@ int main(int argc, char* argv[]) {
         for (const auto& ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             EntityId id = ship->id;
+            if (stateMp[id] == CHOOSEN_DROP) continue;
             if (assigned.count(ship.get())) continue;
             ShipState state = stateMp[id];
             if (state == GATHERING || state == RETURNING) {
@@ -154,7 +221,7 @@ int main(int argc, char* argv[]) {
                 float sum_halite = game_map->sum_around_point(ship->position, 5);
                 if (remaining_turns > 100
                     && dist > 20
-                    && sum_halite > 10141) {
+                    && sum_halite > 7141) {
                     if (me->halite >= constants::DROPOFF_COST) {
                         me->dropoffs[(int)-ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x, ship->position.y);
                         command_queue.push_back(ship->make_dropoff());
@@ -176,8 +243,18 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        map<Position, BFSR> ship_to_dist;
+        ship_to_dist.clear();
+        for (auto s : me->ships) {
+            ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
+        }
+        for (auto s : me->dropoffs) {
+            ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
+        }
+
         for (const auto& ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
+            if (stateMp[ship->id] == CHOOSEN_DROP) continue;
             if (assigned.count(ship.get())) continue;
 
             auto mdest = closest_dropoff(ship->position, &game);
@@ -195,6 +272,7 @@ int main(int argc, char* argv[]) {
         map<double, VC<Cost>> costs;
         for (auto s : me->ships) {
             shared_ptr<Ship> ship = s.second;
+            if (stateMp[ship->id] == CHOOSEN_DROP) continue;
             if (assigned.count(ship.get())) continue;
 
             EntityId id = ship->id;
@@ -298,7 +376,7 @@ int main(int argc, char* argv[]) {
 
         auto yardpos = me->shipyard->position;
         int save_to = 1000;
-        if (want_to_drop) {
+        if (save_for_drop) {
             save_to += constants::DROPOFF_COST;
         }
 
@@ -307,7 +385,7 @@ int main(int argc, char* argv[]) {
             ship_target = max(10, (int)opponent->ships.size());
         }
         if (
-            remaining_turns > 100 &&
+            remaining_turns > 80 &&
             me->halite >= save_to &&
             !proposed[yardpos.x][yardpos.y])
         {
@@ -317,7 +395,6 @@ int main(int argc, char* argv[]) {
         }
 
         if (remaining_turns == 1) {
-            log::log("Halite at turn: ");
             int i = 0;
             for (auto a : halite_at_turn) {
                 i++;
