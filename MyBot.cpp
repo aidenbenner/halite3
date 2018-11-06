@@ -68,6 +68,7 @@ int main(int argc, char* argv[]) {
     vector<int> halite_at_turn;
     for (;;) {
         game.update_frame();
+        closestDropMp.clear();
         shared_ptr<Player> me = game.me;
         shared_ptr<Player> opponent = game.players[0];
         if (opponent->id == me->id)
@@ -122,8 +123,8 @@ int main(int argc, char* argv[]) {
                 stateMp[id] = GATHERING;
             }
             if (ship->halite >= constants::MAX_HALITE * 0.75) {
-                if (game.turn_number > constants::MAX_TURNS * 0.50) {
-                    if (ship->halite >= constants::MAX_HALITE * 0.90) {
+                if (game.turn_number > constants::MAX_TURNS * 0.25) {
+                    if (ship->halite >= constants::MAX_HALITE * 0.95) {
                         stateMp[id] = RETURNING;
                     }
                 }
@@ -139,7 +140,6 @@ int main(int argc, char* argv[]) {
                 stateMp[id] = SUPER_RETURN;
             }
         }
-
 
         // Gathering
         // DROPOFF + GATHERING CONDITIONS
@@ -185,65 +185,56 @@ int main(int argc, char* argv[]) {
             optionsMap[ship->id] = options;
         }
 
-        unordered_set<Position> claimed;
-        set<EntityId> added;
-        for (int i = 0; (size_t)i<me->ships.size(); i++) {
-            Ship *next = nullptr;
-            auto mdest = Position(0,0);
-            double cost = 1e9;
+        // Fill ship costs
+        typedef map<double, Position> CostMap;
+        struct Cost {
+            Position dest;
+            Ship* s;
+        };
+        map<double, VC<Cost>> costs;
+        for (auto s : me->ships) {
+            log::log("hit");
+            shared_ptr<Ship> ship = s.second;
+            if (assigned.count(ship.get())) continue;
 
-            for (auto s : me->ships) {
-                shared_ptr<Ship> ship = s.second;
-                if (assigned.count(ship.get())) continue;
-                if (added.count(ship->id)) continue;
-
-                EntityId id = ship->id;
-                ShipState state = stateMp[id];
-                if (state != GATHERING) {
-                    continue;
-                }
-
-                /*
-                auto prntvec = [](VVI &v) {
-                    for (auto a : v) {
-                        string s = "\t";
-                        for (auto c : a) {
-                            s += to_string(c);
-                            s += "\t";
-                        }
-                        log::log(s);
-                    }
-                };*/
-
-                vector<Direction> options;
-                VVI& dist = ship_to_dist[ship->position].dist;
-                for (int i = 0; i<game_map->width; i++) for (int k = 0; k<game_map->width; k++) {
-                        auto dest = Position(i, k);
-                        if (claimed.count(dest)) continue;
-                        auto drop = closest_dropoff(dest, &game);
-                        VVI& dropoff_dist = ship_to_dist[drop].dist;
-
-                        // TODO(abenner) dropoffs
-                        int cost_to = dist[dest.x][dest.y];
-                        int cost_from = dropoff_dist[dest.x][dest.y];
-                        double c = game_map->costfn(ship.get(), cost_to, cost_from, drop, dest, me->id, is_1v1);
-                        // log::log('cost', c);
-                        if (c < cost) {
-                            cost = c;
-                            mdest = dest;
-                            next = ship.get();
-                        }
-                    }
+            EntityId id = ship->id;
+            ShipState state = stateMp[id];
+            if (state != GATHERING) {
+                continue;
             }
 
-            if (next == nullptr) break;
-            added.insert(next->id);
-            claimed.insert(mdest);
-
-            // VVP& pars = ship_to_dist[next->position].parent;
             vector<Direction> options;
-            options = game_map->get_unsafe_moves(next->position, mdest);
-            optionsMap[next->id] = options;
+            VVI& dist = ship_to_dist[ship->position].dist;
+            for (int i = 0; i<game_map->width; i++) for (int k = 0; k<game_map->width; k++) {
+                    auto dest = Position(i, k);
+                    auto drop = closest_dropoff(dest, &game);
+                    VVI& dropoff_dist = ship_to_dist[drop].dist;
+                    int cost_to = dist[dest.x][dest.y];
+                    int cost_from = dropoff_dist[dest.x][dest.y];
+                    double c = game_map->costfn(ship.get(), cost_to, cost_from, drop, dest, me->id, is_1v1);
+                    if (!costs.count(c)) costs[c] = VC<Cost>();
+                    costs[c].PB(Cost {dest, ship.get()});
+                }
+        }
+
+        unordered_set<Position> claimed;
+        set<EntityId> added;
+        auto cost_itr = costs.begin();
+        while(cost_itr != costs.end()) {
+            for (auto cost : cost_itr->second) {
+                log::log(cost.dest);
+                if (added.count(cost.s->id)) continue;
+                if (claimed.count(cost.dest)) continue;
+
+                auto mdest = cost.dest;
+                added.insert(cost.s->id);
+                claimed.insert(mdest);
+
+                vector<Direction> options;
+                options = game_map->get_unsafe_moves(cost.s->position, mdest);
+                optionsMap[cost.s->id] = options;
+            }
+            cost_itr++;
         }
 
         for (const auto& ship_iterator : me->ships) {
@@ -283,7 +274,7 @@ int main(int argc, char* argv[]) {
                             auto dir = ALL_CARDINALS[i];
                             pos = ship->position.directional_offset(dir);
                             pos = game_map->normalize(pos);
-                            enemy_collision = (dist_from_base >= 5) && collision && game_map->is_in_range_of_enemy(pos, me->id) && dist_from_base > 5;
+                            enemy_collision = (dist_from_base >= 5) && collision && game_map->is_in_range_of_enemy(pos, me->id);
                             if (!proposed[pos.x][pos.y] && !enemy_collision) {
                                 move = dir;
                                 break;

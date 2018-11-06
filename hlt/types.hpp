@@ -4,6 +4,9 @@
 #include "direction.hpp"
 #include "position.hpp"
 
+#define VC std::vector
+#define PB push_back
+
 namespace hlt {
     typedef int Halite;
     typedef int PlayerId;
