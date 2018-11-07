@@ -327,10 +327,8 @@ public:
             int turns = turns_to + turns_back;
 
             int halite = at(dest)->halite;
-            if (turns_to < 3) {
-                if (is_inspired(dest, pid)) {
-                    halite *= 2;
-                }
+            if (is_inspired(dest, pid)) {
+                halite *= 2;
             }
 
 

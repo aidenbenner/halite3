@@ -74,9 +74,18 @@ Position getBestDropoff(Game &g) {
                 }
                 int d_to_ship = g.game_map->calculate_distance(ship_pos, curr);
 
+                bool use = true;
+                for (auto other_player : g.players) {
+                    int dist_to_other = g.game_map->calculate_distance(curr, other_player->shipyard->position);
+                    if (dist_to_yard > dist_to_other + 5)
+                        use = false;
+                }
 
-                int modifier = g.players.size();
-                if ((close == nullptr || d_to_ship < 30) && dist_to_yard < g.game_map->width / modifier) {
+                if (!use)
+                    continue;
+
+
+               if ((close == nullptr || d_to_ship < 30)) {
                     if (c > maxz) {
                         maxz = c;
                         out = curr;
@@ -105,7 +114,7 @@ int main(int argc, char* argv[]) {
     bool is_1v1 = game.players.size() == 2;
     bool collision = !is_1v1;
 
-    game.ready("adbv21");
+    game.ready("adbv22");
 
     map<EntityId, ShipState> stateMp;
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
@@ -337,7 +346,7 @@ int main(int argc, char* argv[]) {
 
                 //bool enemy_collision = game_map->at(pos)->occupied_by_not(me->id);
                 int dist_from_base = game_map->calculate_distance(pos, closest_dropoff(ship->position, &game));
-                bool enemy_collision = collision && game_map->is_in_range_of_enemy(pos, me->id) && dist_from_base > 5;
+                bool enemy_collision = collision && game_map->is_in_range_of_enemy(pos, me->id) && dist_from_base > 1;
 
                 if ((proposed[pos.x][pos.y] || enemy_collision) && !super_ignore) {
                     // try next option
