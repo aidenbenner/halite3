@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
     bool is_1v1 = game.players.size() == 2;
     bool collision = !is_1v1;
 
-    game.ready("adbv22");
+    game.ready("adbv23");
 
     map<EntityId, ShipState> stateMp;
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
@@ -175,6 +175,7 @@ int main(int argc, char* argv[]) {
                     save_for_drop = true;
                     if (me->halite > 4000) {
                         last_drop_off = game.turn_number + 1;
+                        me->dropoffs[-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
                         command_queue.push_back(chosen_ship->make_dropoff());
                         assigned.insert(chosen_ship);
                         me->halite -= 4000;
@@ -363,7 +364,7 @@ int main(int argc, char* argv[]) {
                             auto dir = ALL_CARDINALS[i];
                             pos = ship->position.directional_offset(dir);
                             pos = game_map->normalize(pos);
-                            enemy_collision = (dist_from_base >= 5) && collision && game_map->is_in_range_of_enemy(pos, me->id);
+                            enemy_collision = collision && game_map->is_in_range_of_enemy(pos, me->id);
                             if (!proposed[pos.x][pos.y] && !enemy_collision) {
                                 move = dir;
                                 break;
