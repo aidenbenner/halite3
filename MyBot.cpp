@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
     bool is_1v1 = game.players.size() == 2;
     bool collision = !is_1v1;
 
-    game.ready("adbv23");
+    game.ready("adbv26");
 
     map<EntityId, ShipState> stateMp;
     vector<int> halite_at_turn;
