@@ -348,6 +348,9 @@ int main(int argc, char* argv[]) {
                 //bool enemy_collision = game_map->at(pos)->occupied_by_not(me->id);
                 int dist_from_base = game_map->calculate_distance(pos, closest_dropoff(ship->position, &game));
                 bool enemy_collision = collision && game_map->is_in_range_of_enemy(pos, me->id) && dist_from_base > 1;
+                if (is_1v1) {
+                    enemy_collision = game_map->at(pos)->occupied_by_not(me->id);
+                }
 
                 if ((proposed[pos.x][pos.y] || enemy_collision) && !super_ignore) {
                     // try next option
@@ -364,7 +367,10 @@ int main(int argc, char* argv[]) {
                             auto dir = ALL_CARDINALS[i];
                             pos = ship->position.directional_offset(dir);
                             pos = game_map->normalize(pos);
-                            enemy_collision = collision && game_map->is_in_range_of_enemy(pos, me->id);
+                            enemy_collision = collision && game_map->is_in_range_of_enemy(pos, me->id) && dist_from_base > 1;
+                            if (is_1v1) {
+                                enemy_collision = game_map->at(pos)->occupied_by_not(me->id);
+                            }
                             if (!proposed[pos.x][pos.y] && !enemy_collision) {
                                 move = dir;
                                 break;
