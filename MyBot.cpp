@@ -119,9 +119,11 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     vector<int> halite_at_turn;
-    const int FIRST_DROP = 75;
+    const int FIRST_DROP = 100;
+    // int ships_per_drop = 25;
     int last_drop_off = 0;
     Position chosen_drop = getBestDropoff(game);
+    Ship *lastShip;
     for (;;) {
         game.update_frame();
         closestDropMp.clear();
@@ -156,20 +158,31 @@ int main(int argc, char* argv[]) {
         }
 
         // CHOSEN DROP
-        if (last_drop_off - game.turn_number == 0 || game.turn_number < FIRST_DROP) {
-            chosen_drop = getBestDropoff(game);
-        }
-
-        Ship* chosen_ship = getClosestShip(chosen_drop, *me.get(), *game_map);
-        if (chosen_ship != nullptr)
-            log::log(chosen_ship->id);
-
+        int num_ships = me->ships.size();
+        int num_drops = me->dropoffs.size();
+        int expected_dropoffs = num_ships / 10;
         bool save_for_drop = false;
-        if (chosen_ship != nullptr && !assigned.count(chosen_ship)) {
-            if (chosen_drop == Position(-1, -1)) {
-
+        if (num_drops < expected_dropoffs && remaining_turns > 60) {
+            log::log("hit");
+            Ship* chosen_ship = getClosestShip(chosen_drop, *me.get(), *game_map);
+            if (chosen_ship != lastShip) {
+                chosen_drop = getBestDropoff(game);
+                chosen_ship = getClosestShip(chosen_drop, *me.get(), *game_map);
             }
-            else if (game.turn_number - last_drop_off > FIRST_DROP && remaining_turns > 80) {
+            lastShip = chosen_ship;
+
+            if (chosen_ship != nullptr)
+                log::log(chosen_ship->id);
+
+            for (auto s : me->ships) {
+                if (s.second->id != chosen_ship->id) {
+                    if (stateMp[s.second->id] == CHOOSEN_DROP) {
+                        stateMp[s.second->id] = GATHERING;
+                    }
+                }
+            }
+
+            if (chosen_ship != nullptr && !assigned.count(chosen_ship)) {
                 stateMp[chosen_ship->id] = CHOOSEN_DROP;
                 if (chosen_ship->position == chosen_drop) {
                     save_for_drop = true;
@@ -190,6 +203,10 @@ int main(int argc, char* argv[]) {
                 // me->dropoffs[(int)-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
                 closestDropMp.clear();
             }
+        }
+        else {
+            chosen_drop = getBestDropoff(game);
+            last_drop_off = game.turn_number + 1;
         }
 
         // priority to gathering
@@ -230,6 +247,7 @@ int main(int argc, char* argv[]) {
             ShipState state = stateMp[id];
             if (state == GATHERING || state == RETURNING) {
                 // dropoff condition
+                /*
                 int dist = game_map->calculate_distance(ship->position, closest_dropoff(ship->position, &game));
                 float sum_halite = game_map->sum_around_point(ship->position, 5);
                 if (remaining_turns > 100
@@ -243,7 +261,7 @@ int main(int argc, char* argv[]) {
                         me->halite -= 4000;
                         continue;
                     }
-                }
+                }*/
                 // TODO(abenner) median
                 if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.50)) {
                     if (state == RETURNING && ship->halite >= 899) {
