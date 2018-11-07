@@ -117,14 +117,15 @@ int main(int argc, char* argv[]) {
     game.ready("adbv23");
 
     map<EntityId, ShipState> stateMp;
-    log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     vector<int> halite_at_turn;
-    const int FIRST_DROP = 100;
+    log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
+    //const int FIRST_DROP = 100;
     // int ships_per_drop = 25;
     int last_drop_off = 0;
     Position chosen_drop = getBestDropoff(game);
-    Ship *lastShip;
+    Ship *lastShip = nullptr;
     for (;;) {
+        last_drop_off++;
         game.update_frame();
         closestDropMp.clear();
         shared_ptr<Player> me = game.me;
@@ -165,9 +166,11 @@ int main(int argc, char* argv[]) {
         if (num_drops < expected_dropoffs && remaining_turns > 60) {
             log::log("hit");
             Ship* chosen_ship = getClosestShip(chosen_drop, *me.get(), *game_map);
-            if (chosen_ship != lastShip) {
-                chosen_drop = getBestDropoff(game);
-                chosen_ship = getClosestShip(chosen_drop, *me.get(), *game_map);
+            if (lastShip != nullptr && chosen_ship != nullptr) {
+                if (chosen_ship->id != lastShip->id) {
+                    chosen_drop = getBestDropoff(game);
+                    chosen_ship = getClosestShip(chosen_drop, *me.get(), *game_map);
+                }
             }
             lastShip = chosen_ship;
 
@@ -182,26 +185,28 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-            if (chosen_ship != nullptr && !assigned.count(chosen_ship)) {
-                stateMp[chosen_ship->id] = CHOOSEN_DROP;
-                if (chosen_ship->position == chosen_drop) {
-                    save_for_drop = true;
-                    if (me->halite > 4000) {
-                        last_drop_off = game.turn_number + 1;
-                        me->dropoffs[-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
-                        command_queue.push_back(chosen_ship->make_dropoff());
-                        assigned.insert(chosen_ship);
-                        me->halite -= 4000;
+            if (game_map->at(chosen_drop)->structure != nullptr) {
+                if (chosen_ship != nullptr && !assigned.count(chosen_ship)) {
+                    stateMp[chosen_ship->id] = CHOOSEN_DROP;
+                    if (chosen_ship->position == chosen_drop) {
+                        save_for_drop = true;
+                        if (me->halite > 4000) {
+                            last_drop_off = game.turn_number + 1;
+                            me->dropoffs[-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
+                            command_queue.push_back(chosen_ship->make_dropoff());
+                            assigned.insert(chosen_ship);
+                            me->halite -= 4000;
+                        }
                     }
+                    else {
+                        optionsMap[chosen_ship->id] = game_map->get_unsafe_moves(chosen_ship->position, chosen_drop);
+                    }
+                    if (me->halite > 4000) {
+                        me->dropoffs[-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
+                    }
+                    // me->dropoffs[(int)-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
+                    closestDropMp.clear();
                 }
-                else {
-                    optionsMap[chosen_ship->id] = game_map->get_unsafe_moves(chosen_ship->position, chosen_drop);
-                }
-                if (me->halite > 4000) {
-                    me->dropoffs[-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
-                }
-                // me->dropoffs[(int)-chosen_ship->id] = std::make_shared<Dropoff>(me->id, -chosen_ship->id, chosen_drop.x, chosen_drop.y);
-                closestDropMp.clear();
             }
         }
         else {
