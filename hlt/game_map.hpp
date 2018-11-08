@@ -28,10 +28,25 @@ public:
   }
 };
 
+    struct TimePos {
+        int turn;
+        Position p;
+    };
+
     struct GameMap {
         int width;
         int height;
         std::vector<std::vector<MapCell>> cells;
+
+        std::set<TimePos> planned_route;
+
+        bool checkIfPlanned(int future_turns, Position p) {
+            return planned_route.count(TimePos{future_turns, p});
+        }
+
+        void addPlanned(int future_turns, Position p) {
+            planned_route.insert(TimePos{future_turns, p});
+        }
 
         MapCell* at(const Position& position) {
             Position normalized = normalize(position);
@@ -106,6 +121,46 @@ public:
                 }
             }
             return BFSR{dist, parent};
+        }
+
+        vector<Position> traceBackPath(VVP parents, Position start, Position dest) {
+            Position curr = dest;
+            VC<Position> path;
+
+            while (curr != start) {
+                curr = parents[curr];
+                path.push_back(curr);
+            }
+            std::reverse(path.begin(), path.end());
+
+            return path;
+        }
+
+        vector<Direction> planMinCostRoute(VVP parents, int starting_halite, Position start, Position dest) {
+            VC<Position> path = traceBackPath(parents, start, dest);
+
+            int pind = 0;
+            auto curr = start;
+            int curr_h = starting_halite;
+            int time = 0;
+            int wturns = 0;
+            while (curr != dest) {
+                // Assuming halite stays constant
+                if (!checkIfPlanned(time, curr) && curr_h > at(curr)->cost()) {
+                    curr_h -= at(curr)->cost();
+                    curr = path[++pind];
+                }
+                else {
+                    wturns++;
+                    curr_h == at(curr)->gain();
+                    time += 1;
+                }
+                time += 1;
+            }
+            // we had to wait a turn or 
+            if (wturns > 0) {
+
+            }
         }
 
         vector<Direction> minCostOptions(VVP pos, Position start, Position dest) {
@@ -183,107 +238,6 @@ public:
             return possible_moves;
         }
 
-        void onTurn() {
-            ncost.clear();
-        }
-
-        map<tuple<int,int,int,int>, int> ncost;
-        int naive_cost(int starting_halite, Position a, Position b) {
-            a = normalize(a);
-            b = normalize(b);
-            auto t = make_tuple(a.x, a.y, b.x, b.y);
-            if (ncost.count(t)) return ncost[t];
-            if (a == b) return 0;
-            int cost = at(a)->cost();
-            //int gain = at(a)->gain();
-
-            int mhalite = 999999999;
-            auto pos = a;
-            for (auto d : get_unsafe_moves(a,b)) {
-                if (at(a.directional_offset(d))->halite < mhalite) {
-                    pos = a.directional_offset(d);
-                    mhalite = at(pos)->halite;
-                }
-            }
-
-            return ncost[t] = cost + naive_cost(starting_halite, pos, b);
-        }
-
-        int naive_waits(int starting_halite, Position a, Position b) {
-            a = normalize(a);
-            b = normalize(b);
-            if (a == b) return 0;
-            int cost = at(a)->cost();
-            int gain = at(a)->gain();
-            if (cost > starting_halite) {
-                int curr_hal = starting_halite + gain; // - cost * 4 / 5;
-                return 1 + naive_waits(curr_hal + gain,a, b);
-            }
-            if (at(a)->halite > 100) {
-                int curr_hal = starting_halite + gain; // - cost * 4 / 5;
-                return 1 + naive_waits(curr_hal + gain,a, b);
-            }
-            return 1 + naive_waits(starting_halite - cost, a.directional_offset(get_unsafe_moves(a,b)[0]), b);
-        }
-
-        Direction naive_navigate(std::shared_ptr<Ship> ship, const Position& destination) {
-            // get_unsafe_moves normalizes for us
-            ship->log("navigating");
-            if (ship->position == destination)
-                return Direction::STILL;
-            for (auto direction : get_unsafe_moves(ship->position, destination)) {
-                //Position target_pos = ship->position.directional_offset(direction);
-                return direction;
-                /*if (!at(target_pos)->is_unsafe()) {
-                    at(target_pos)->mark_unsafe(ship);
-                    return direction;
-                }*/
-            }
-            return Direction::STILL;
-        }
-
-        unordered_map<pair<Position, Position>, pair<int, Direction>, pairhash> mincost;
-        std::pair<int, Direction> mincostnav(const Position& start, const Position& dest) {
-            mincost.clear();
-            return mincostnav2(start,dest);
-        }
-
-        std::pair<int, Direction> fast_mincostnav(const Position& start, const Position& dest) {
-            return mincostnav2(start,dest);
-        }
-
-        void clear_fast_mincostnav() {
-            mincost.clear();
-        }
-
-        std::pair<int, Direction> mincostnav2(const Position& start, const Position& dest) {
-            if (start == dest) {
-                return make_pair(0, Direction::STILL);
-            }
-            auto p = make_pair(start, dest);
-            if (mincost.count(p)) {
-                return mincost[p];
-            }
-
-            auto moves = get_unsafe_moves(start, dest);
-            int curr_weight = 666001;
-            auto curr_move = Direction::STILL;
-
-            int ccost = at(start)->cost();
-            for (auto m : moves) {
-                auto curr = mincostnav2(normalize(start.directional_offset(m)), dest);
-                if (curr.first < curr_weight) {
-                    curr_weight = curr.first;
-                    curr_move = curr.second;
-                }
-            }
-            //assert(curr_weight != 666001);
-            if (curr_weight == 666001) curr_weight = 0;
-
-           return mincost[p] = std::make_pair(ccost + curr_weight, curr_move);
-        }
-
-
         bool is_in_range_of_enemy(Position p, PlayerId pl) {
             if (at(p)->occupied_by_not(pl)) return true;
             for (int i = 0; i<4; i++) {
@@ -306,8 +260,6 @@ public:
             return out;
         }
 
-        const int TURN_WEIGHT = 30;
-
         int get_total_halite() {
             int sum = 0;
             for (int i = 0; i<width; i++) {
@@ -318,7 +270,6 @@ public:
             return sum;
         }
 
-        int BLOCK_SIZE = 1;
         inline double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1) {
             if (dest == shipyard) return 10000000;
 
@@ -368,21 +319,6 @@ public:
             return sum;
         }
 
-        Position getBestDropoff() {
-            Position out;
-            int maxz = -1;
-            for (int i = 0; i<width; i++) {
-                for (int k = 0; k<height; k++) {
-                    int c = sum_around_point(out, 5);
-                    if (c > maxz) {
-                        c = maxz;
-                        out = Position(i, k);
-                    }
-                }
-            }
-            return out;
-        }
-
         float avg_around_point(Position p, int r) {
             int sum = 0;
             int count = 0;
@@ -397,28 +333,6 @@ public:
                 }
             }
             return sum / (float)count;
-        }
-
-
-        Position largestInArea(Position p, int r) {
-            return largestInArea(p.x, p.y, r);
-        }
-
-        Position largestInArea(int x, int y, int r) {
-            int curr_max = 0;
-            int cx = 0;
-            int cy = 0;
-            for (int i = 0; i < 2 * r; i++) {
-                for (int k = 0; k < 2 * r; k++) {
-                    int h = at(x + i - r,y + k - r)->halite;
-                    if (h > curr_max) {
-                        curr_max = h;
-                        cx = x + i - r;
-                        cy = y + k - r;
-                    }
-                }
-            }
-            return Position {cx, cy};
         }
 
         void _update();
