@@ -98,6 +98,11 @@ def register_bot(conn, name, path):
     rerank_bots(conn)
 
 
+def deregister_all_bots(conn):
+    query = 'delete from bots'
+    conn.execute(query)
+    output.output("Bots deregistered.")
+
 def deregister_bot(conn, name):
     existing = conn.execute('select * from bots where name = ?', (name,)).fetchall()
     if existing and util.confirm("Delete bot {}?".format(existing[0]['id']), json_confirm=True):
@@ -282,7 +287,10 @@ def main(args):
             register_bot(conn, args.name, args.path)
     elif args.gym_mode == DEREGISTER_MODE:
         with connect(args.db_path) as conn:
-            deregister_bot(conn, args.name)
+            if args.all:
+                deregister_all_bots(conn)
+            else:
+                deregister_bot(conn, args.name)
     elif args.gym_mode == EVALUATE_MODE:
         hlt_path = args.halite_binary
         output_dir = args.game_output_dir
@@ -309,7 +317,12 @@ def parse_arguments(subparser):
                                  help="The command to run to start the bot.")
 
     deregister_parser = gym_subparser.add_parser(DEREGISTER_MODE, help='Delete a bot.')
-    deregister_parser.add_argument('name', type=str,
+    deregister_parser.add_argument('--all',
+                                   action='store_true',
+                                   required=False,
+                                   help="Drop all registered bots")
+    deregister_parser.add_argument('--name', type=str,
+                                   required=False,
                                    help="The name of the bot to delete.")
 
     evaluate_parser = gym_subparser.add_parser(EVALUATE_MODE, help='Run games with bots in the gym.')
