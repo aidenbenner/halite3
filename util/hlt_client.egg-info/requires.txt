@@ -1,0 +1,4 @@
+appdirs
+requests
+trueskill
+zstd

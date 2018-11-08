@@ -1,0 +1,15 @@
+Metadata-Version: 1.2
+Name: hlt-client
+Version: 1.1.0
+Summary: Client for interacting with Halite III
+Home-page: https://github.com/HaliteChallenge/Halite-III
+Author: Two Sigma
+Author-email: halite@halite.io
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3

@@ -1,0 +1,4 @@
+#!/usr/bin/python3
+
+from hlt_client import client
+client.main()
