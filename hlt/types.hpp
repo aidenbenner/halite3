@@ -13,6 +13,7 @@ namespace hlt {
     typedef int EntityId;
 
     typedef std::vector<std::vector<int>> VVI;
+    typedef std::vector<std::vector<int>> VVI;
     typedef std::vector<std::vector<Position>> VVP;
 
     struct BFSR {

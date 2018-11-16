@@ -23,11 +23,26 @@ namespace hlt {
         }
 
         int cost() {
-            return floor(1.0 / constants::MOVE_COST_RATIO * halite);
+            return halite / constants::MOVE_COST_RATIO;
+        }
+
+        // Cost to move after n turns
+        int cost(int turns) {
+            return remaining(turns) / constants::MOVE_COST_RATIO;
+        }
+
+        // Remaining halite after n waits.
+        int remaining(int turns) {
+            return ceil(halite * pow(1.0 - 1.0 / constants::EXTRACT_RATIO, turns));
         }
 
         int gain() {
-            return floor(1.0 / constants::EXTRACT_RATIO * halite);
+            return halite + constants::EXTRACT_RATIO ;
+        }
+
+        // Gain after n turns of pickups
+        int gain(int turns) {
+            return remaining(turns) * pow(1.0 - constants::EXTRACT_RATIO, turns);
         }
 
         bool is_occupied(PlayerId p) const {

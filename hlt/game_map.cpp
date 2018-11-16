@@ -15,8 +15,8 @@ void hlt::GameMap::_update() {
         }
     }
 
-    ncost.clear();
-    mincost.clear();
+    hal_mp.clear();
+    planned_route.clear();
     inspiredMemo.clear();
 
     int update_count;
@@ -29,6 +29,16 @@ void hlt::GameMap::_update() {
         hlt::get_sstream() >> x >> y >> halite;
         cells[y][x].halite = halite;
     }
+
+
+    for (int i = 0; i < width; i++) {
+        for (int k = 0; k < height; k++) {
+            hal_dist.push_back(at(i, k)->halite);
+        }
+    }
+    std::sort(hal_dist.begin(), hal_dist.end());
+
+    
 }
 
 std::unique_ptr<hlt::GameMap> hlt::GameMap::_generate() {
