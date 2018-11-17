@@ -13,10 +13,7 @@ CMakeFiles/*
 old/
 .idea/*
 *.cbp
-benchmarks/*
 bots/*
-client/*
-
 # Cmake
 CMakeCache.txt
 CMakeFiles
