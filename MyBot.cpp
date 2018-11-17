@@ -499,8 +499,10 @@ int main(int argc, char* argv[]) {
         if (me->halite >= save_to &&
             !proposed[shipyard_pos.x][shipyard_pos.y])
         {
-            if (remaining_turns > 220 || (int)me->ships.size() < ship_target) {
-                command_queue.push_back(me->shipyard->spawn());
+            if (remaining_turns > 220 || (int) me->ships.size() < ship_target) {
+                if (remaining_turns > 60) {
+                    command_queue.push_back(me->shipyard->spawn());
+                }
             }
         }
 
