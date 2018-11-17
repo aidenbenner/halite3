@@ -427,11 +427,11 @@ public:
             int turns = turns_to + turns_back;
 
             int halite = at(dest)->halite;
-            // if (turns_to <= 3) {
+            if (turns_to <= 4) {
                 if (is_inspired(dest, pid)) {
                     halite *= 3;
                 }
-            // }
+            }
 
             int avg_hal = avg_around_point(dest, 1);
             double out = (avg_hal / 2 + halite - to_cost - home_cost) / (double)turns;
