@@ -420,6 +420,7 @@ public:
 
         inline double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1) {
             if (dest == shipyard) return 10000000;
+            if (at(dest)->occupied_by_not(pid)) return 100000000;
 
             int turns_to = calculate_distance(s->position, dest);
             int turns_back = calculate_distance(dest, shipyard);

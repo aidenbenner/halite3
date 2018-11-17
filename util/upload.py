@@ -19,6 +19,6 @@ print('Did you commit? y/n')
 response = input()
 
 if response == 'y':
-    os.system('git tag -a v%s' %s version)
+    os.system('git tag -a v%s' % version)
 else:
     print("please tag the branch")

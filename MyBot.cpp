@@ -146,7 +146,7 @@ int main(int argc, char* argv[]) {
     bool save_for_drop = false;
     const bool ENABLE_DROPOFFS = true;
 
-    game.ready("adbv29");
+    game.ready("adbv30");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     for (;;) {
@@ -222,9 +222,6 @@ int main(int argc, char* argv[]) {
             int dist = game_map->calculate_distance(ship->position, closest_dropoff(ship->position, &game));
             float avg_halite = game_map->avg_around_point(ship->position, 5);
 
-            // min requirements
-            //log::log(remaining_turns , dist , avg_halite , expected_dropoffs);
-            //log::log(remaining_turns > 100, dist > game_map->width / 3, avg_halite > 100, curr_dropoffs < expected_dropoffs);
             if (game_map->at(ship)->halite > 4000 - ship->halite) {
                 curr_avg_halite = 9999999;
                 best_dropoff = ship.get();
@@ -264,8 +261,8 @@ int main(int argc, char* argv[]) {
             if (assigned.count(ship.get())) continue;
             auto state = stateMp[id];
             if (state == GATHERING || state == RETURNING) {
-                log::log("HAl percentile", game_map->get_halite_percentile(0.50), game_map->at(ship)->halite);
-                if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.50)) {
+                log::log("HAl percentile", game_map->get_halite_percentile(0.20), game_map->at(ship)->halite);
+                if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.20)) {
                     if (state == RETURNING && ship->halite >= 899) {
                         continue;
                     }
@@ -330,6 +327,7 @@ int main(int argc, char* argv[]) {
                     VVI& dropoff_dist = ship_to_dist[drop].dist;
                     int net_cost_to = dist[dest.x][dest.y];
                     int cost_from = dropoff_dist[dest.x][dest.y];
+
                     double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1);
                     if (!costs.count(c)) costs[c] = VC<Cost>();
                     costs[c].PB(Cost {dest, ship.get()});
@@ -403,7 +401,7 @@ int main(int argc, char* argv[]) {
                         continue;
                     }
                     // pick something else
-                    if (!proposed[ship->position.x][ship->position.y] && game_map->at(ship->position)->halite > game_map->get_halite_percentile(0.5)) {
+                    if (!proposed[ship->position.x][ship->position.y] && game_map->at(ship->position)->halite > 0) {
                         move = Direction::STILL;
                     } else {
                         for (int i = 0; i < 4; i++) {
