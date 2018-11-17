@@ -418,24 +418,9 @@ public:
             return sum;
         }
 
-        vector<Ship*> get_ships_in_range(Position p, int r, PlayerId pid) {
-            vector<Ship*> out;
-            for (int i = 0; i<2 * r; i++) {
-                for (int k = 0; k< 2 * r; k++) {
-                    auto end = Position(p.x - r + i, p.y -r + k);
-                    if (p == end) continue;
-                    if (calculate_distance(p, end) <= r) {
-                        if (at(end)->is_occupied(pid)) {
-                            out.push_back(at(end)->ship.get());
-                        }
-                    }
-                }
-            }
-            return out;
-        }
-
         inline double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1) {
             if (dest == shipyard) return 10000000;
+            if (at(dest)->occupied_by_not(pid)) return 100000000;
 
             int turns_to = calculate_distance(s->position, dest);
             int turns_back = calculate_distance(dest, shipyard);

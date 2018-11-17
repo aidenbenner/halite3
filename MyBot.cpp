@@ -159,7 +159,7 @@ int main(int argc, char* argv[]) {
     bool save_for_drop = false;
     const bool ENABLE_DROPOFFS = true;
 
-    game.ready("adbv34");
+    game.ready("adbv33");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     Timer turnTimer;
@@ -205,9 +205,9 @@ int main(int argc, char* argv[]) {
             if (!stateMp.count(id)) {
                 stateMp[id] = GATHERING;
             }
-            if (ship->halite >= constants::MAX_HALITE * 0.85) {
+            if (ship->halite >= constants::MAX_HALITE * 0.75) {
                 if (game.turn_number > constants::MAX_TURNS * 0.25) {
-                    if (ship->halite >= constants::MAX_HALITE * 0.92) {
+                    if (ship->halite >= constants::MAX_HALITE * 0.95) {
                         stateMp[id] = RETURNING;
                     }
                 }
@@ -278,8 +278,8 @@ int main(int argc, char* argv[]) {
             if (assigned.count(ship.get())) continue;
             auto state = stateMp[id];
             if (state == GATHERING || state == RETURNING) {
-                log::log("HAl percentile", game_map->get_halite_percentile(0.50), game_map->at(ship)->halite);
-                if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.50)) {
+                log::log("HAl percentile", game_map->get_halite_percentile(0.20), game_map->at(ship)->halite);
+                if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.20)) {
                     if (state == RETURNING && ship->halite >= 899) {
                         continue;
                     }
@@ -360,7 +360,6 @@ int main(int argc, char* argv[]) {
         auto cost_itr = costs.begin();
 
         vector<Order> gather_orders;
-        map<Ship*, vector<Ship*>> mpToShipInRange;
         while(cost_itr != costs.end()) {
             for (auto cost : cost_itr->second) {
                 if (added.count(cost.s->id)) continue;
@@ -374,7 +373,6 @@ int main(int argc, char* argv[]) {
                 //game_map->plan_min_cost_route(greedy_bfs[cost.s->position].parent, cost.s->halite, cost.s->position, mdest);
                 options = game_map->get_unsafe_moves(cost.s->position, mdest);// game_map->dirsFrompath(game_map->traceBackPath(greedy_bfs[cost.s->position].parent, cost.s->position, mdest));
 
-                mpToShipInRange[cost.s] = game_map->get_ships_in_range(cost.s->position, 3, me->id);
                 added.insert(cost.s->id);
                 claimed.insert(mdest);
                 gather_orders.push_back(Order{10, GATHERING, options, cost.s, mdest});
@@ -384,47 +382,37 @@ int main(int argc, char* argv[]) {
             cost_itr++;
         }
 
-        // calcuate ships in 5x5 grid
-
         log::log("gather size", gather_orders.size());
-        // turnTimer.start();
-        int attemptedSwaps = 0;
         if (gather_orders.size() > 1) while (turnTimer.elapsed() < 1.8) {
-            attemptedSwaps++;
             // swap 2 random orders
             // log::log(turnTimer.tostring());
-            for (int i = 0; i<(int)gather_orders.size() && turnTimer.elapsed() < 1.8; i++) {
-                for (int k = i+1; k<(int)gather_orders.size(); k++) {
-                    int order_1 = i; //rand() % (int)gather_orders.size();
-                    int order_2 = k; //rand() % (int)gather_orders.size();
+            int order_1 = rand() % (int)gather_orders.size();
+            int order_2 = rand() % (int)gather_orders.size();
 
-                    // log::log(order_1);
-                    if (order_1 == order_2) continue;
+            // log::log(order_1);
+            if (order_1 == order_2) continue;
 
-                    Order& o1 = gather_orders[order_1];
-                    Order& o2 = gather_orders[order_2];
+            Order& o1 = gather_orders[order_1];
+            Order& o2 = gather_orders[order_2];
 
-                    auto shipPos1 = ShipPos{o1.ship->id, o1.planned_dest};
-                    auto shipPos2 = ShipPos{o2.ship->id, o2.planned_dest};
+            auto shipPos1 = ShipPos{o1.ship->id, o1.planned_dest};
+            auto shipPos2 = ShipPos{o2.ship->id, o2.planned_dest};
 
-                    auto swapped1 = ShipPos{o1.ship->id, o2.planned_dest};
-                    auto swapped2 = ShipPos{o2.ship->id, o1.planned_dest};
+            auto swapped1 = ShipPos{o1.ship->id, o2.planned_dest};
+            auto swapped2 = ShipPos{o2.ship->id, o1.planned_dest};
 
-                    double startCost = costMp[shipPos1] + costMp[shipPos2];
-                    double newCost = costMp[swapped1] + costMp[swapped2];
+            double startCost = costMp[shipPos1] + costMp[shipPos2];
+            double newCost = costMp[swapped1] + costMp[swapped2];
 
-                    if (newCost < startCost) {
-                        // swap the orders
-                        std::swap(o1.next_dirs, o2.next_dirs);
-                        auto tmp = o1.planned_dest;
-                        o1.planned_dest = o2.planned_dest;
-                        o2.planned_dest = tmp;
-                        log::log("Cost gain of ", newCost, startCost);
-                    }
-                }
+            if (newCost < startCost) {
+                // swap the orders
+                std::swap(o1.next_dirs, o2.next_dirs);
+                auto tmp = o1.planned_dest;
+                o1.planned_dest = o2.planned_dest;
+                o2.planned_dest = tmp;
+                log::log("Cost gain of ", newCost, startCost);
             }
         }
-        log::log("Attempted swaps", attemptedSwaps);
 
         VC<Order> orders;
         orders = gather_orders;
