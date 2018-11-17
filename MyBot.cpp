@@ -146,7 +146,7 @@ int main(int argc, char* argv[]) {
     bool save_for_drop = false;
     const bool ENABLE_DROPOFFS = true;
 
-    game.ready("adbv28");
+    game.ready("adbv29");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     for (;;) {
@@ -299,7 +299,7 @@ int main(int argc, char* argv[]) {
             options = game_map->minCostOptions(pars, ship->position, mdest);
 
             if (state == RETURNING) {
-                 options = game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
+                 // options = game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
             }
             ordersMap[ship->id] = Order{0, RETURNING, options, ship.get(), mdest};
         }
@@ -347,12 +347,11 @@ int main(int argc, char* argv[]) {
 
                 auto mdest = cost.dest;
                 vector<Direction> options;
-                options = game_map->plan_gather_path(cost.s->halite, cost.s->position, mdest);
-
-                if (options.size() == 0)
-                    continue;
+                //options = game_map->plan_gather_path(cost.s->halite, cost.s->position, mdest);
+                //if (options.size() == 0)
+                //   continue;
                 // game_map->plan_min_cost_route(greedy_bfs[cost.s->position].parent, cost.s->halite, cost.s->position, mdest);
-                //options = game_map->get_unsafe_moves(cost.s->position, mdest);// game_map->dirsFrompath(game_map->traceBackPath(greedy_bfs[cost.s->position].parent, cost.s->position, mdest));
+                options = game_map->get_unsafe_moves(cost.s->position, mdest);// game_map->dirsFrompath(game_map->traceBackPath(greedy_bfs[cost.s->position].parent, cost.s->position, mdest));
 
                 added.insert(cost.s->id);
                 claimed.insert(mdest);
