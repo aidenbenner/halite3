@@ -159,7 +159,7 @@ int main(int argc, char* argv[]) {
     bool save_for_drop = false;
     const bool ENABLE_DROPOFFS = true;
 
-    game.ready("adbv31");
+    game.ready("adbv33");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     Timer turnTimer;
