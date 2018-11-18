@@ -31,6 +31,7 @@ void hlt::GameMap::_update() {
     }
 
 
+    hal_dist.clear();
     for (int i = 0; i < width; i++) {
         for (int k = 0; k < height; k++) {
             hal_dist.push_back(at(i, k)->halite);

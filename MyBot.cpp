@@ -25,6 +25,8 @@ enum OrderType {
     RETURN,
 };
 
+bool DEBUG = true;
+
 struct ShipPos {
     int id;
     Position pos;
@@ -159,7 +161,7 @@ int main(int argc, char* argv[]) {
     bool save_for_drop = false;
     const bool ENABLE_DROPOFFS = true;
 
-    game.ready("adbv33");
+    game.ready("adbv35");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     Timer turnTimer;
@@ -188,10 +190,12 @@ int main(int argc, char* argv[]) {
 
         // ROLE ASSIGNMENT
         // ships that can't move are highest priority
+        unordered_set<Position> claimed;
         for (const auto& ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             if (!game_map->canMove(ship)) {
                 proposed[ship->position.x][ship->position.y] = 1;
+                claimed.insert(ship->position);
                 command_queue.push_back(ship->stay_still());
                 assigned.insert(ship.get());
             }
@@ -272,14 +276,15 @@ int main(int argc, char* argv[]) {
         // END DROPOFFS
 
         // GATHERING
+        /*
         for (const auto& ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             EntityId id = ship->id;
             if (assigned.count(ship.get())) continue;
             auto state = stateMp[id];
             if (state == GATHERING || state == RETURNING) {
-                log::log("HAl percentile", game_map->get_halite_percentile(0.20), game_map->at(ship)->halite);
-                if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.20)) {
+                log::log("HAl percentile", game_map->get_halite_percentile(0.30), game_map->at(ship)->halite);
+                if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.30)) {
                     if (state == RETURNING && ship->halite >= 899) {
                         continue;
                     }
@@ -289,7 +294,7 @@ int main(int argc, char* argv[]) {
                     log::log("Ship is gathering", ship->id);
                 }
             }
-        }
+        }*/
 
         map<Position, BFSR> ship_to_dist;
         map<Position, BFSR> greedy_bfs;
@@ -326,6 +331,9 @@ int main(int argc, char* argv[]) {
 
         map<double, VC<Cost>> costs;
         map<ShipPos, double> costMp;
+        vector<Order> gather_orders;
+        set<EntityId> added;
+
         for (auto s : me->ships) {
             shared_ptr<Ship> ship = s.second;
             if (assigned.count(ship.get())) continue;
@@ -347,6 +355,15 @@ int main(int argc, char* argv[]) {
                     int cost_from = dropoff_dist[dest.x][dest.y];
 
                     double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1);
+                    if (ship->position == dest) {
+                        if (game_map->at(dest)->halite > game_map->get_halite_percentile(0.4)) {
+                            // Always wait
+                            claimed.insert(dest);
+                            added.insert(ship->id);
+                            gather_orders.push_back(Order{10, GATHERING, vector<Direction>(1, Direction::STILL), ship.get(), dest});
+                            ordersMap.erase(ship->id);
+                        }
+                    }
                     if (!costs.count(c)) costs[c] = VC<Cost>();
 
                     auto sp = ShipPos{ship->id, dest};
@@ -355,11 +372,8 @@ int main(int argc, char* argv[]) {
                 }
         }
 
-        unordered_set<Position> claimed;
-        set<EntityId> added;
         auto cost_itr = costs.begin();
 
-        vector<Order> gather_orders;
         while(cost_itr != costs.end()) {
             for (auto cost : cost_itr->second) {
                 if (added.count(cost.s->id)) continue;
@@ -383,7 +397,14 @@ int main(int argc, char* argv[]) {
         }
 
         log::log("gather size", gather_orders.size());
-        if (gather_orders.size() > 1) while (turnTimer.elapsed() < 1.8) {
+        Timer optimizeTimer = Timer{"Optimize Timer"};
+        optimizeTimer.start();
+
+        double time_thresh = 1.8;
+        if (DEBUG) {
+            time_thresh = 1.0;
+        }
+        if (gather_orders.size() > 1) while (optimizeTimer.elapsed() < time_thresh) {
             // swap 2 random orders
             // log::log(turnTimer.tostring());
             int order_1 = rand() % (int)gather_orders.size();
@@ -404,9 +425,15 @@ int main(int argc, char* argv[]) {
             double startCost = costMp[shipPos1] + costMp[shipPos2];
             double newCost = costMp[swapped1] + costMp[swapped2];
 
+            startCost = game_map->calculate_distance(o1.ship->position, o1.planned_dest)
+                    +   game_map->calculate_distance(o2.ship->position, o2.planned_dest);
+            newCost = game_map->calculate_distance(o1.ship->position, o2.planned_dest)
+                +   game_map->calculate_distance(o2.ship->position, o1.planned_dest);
+
             if (newCost < startCost) {
                 // swap the orders
-                std::swap(o1.next_dirs, o2.next_dirs);
+                o1.next_dirs = game_map->get_unsafe_moves(o1.ship->position, o2.planned_dest);
+                o2.next_dirs = game_map->get_unsafe_moves(o2.ship->position, o1.planned_dest);
                 auto tmp = o1.planned_dest;
                 o1.planned_dest = o2.planned_dest;
                 o2.planned_dest = tmp;
@@ -479,7 +506,6 @@ int main(int argc, char* argv[]) {
                 break;
             }
 
-            log::log("Assigned");
             auto pos = game_map->normalize(ship->position.directional_offset(selected_move));
             proposed[pos.x][pos.y] = 1;
             command_queue.push_back(ship->move(selected_move));
@@ -515,6 +541,11 @@ int main(int argc, char* argv[]) {
         }
 
         log::log(turnTimer.tostring());
+
+        log::log("Score:");
+        log::log(me->halite, opponent->halite);
+        log::log("Hal percentile ", game_map->get_halite_percentile(0.5));
+        log::log("Hal percentile ", game_map->get_halite_percentile(0.4));
 
         if (!game.end_turn(command_queue)) {
             break;
