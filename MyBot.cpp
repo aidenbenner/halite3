@@ -25,7 +25,7 @@ enum OrderType {
     RETURN,
 };
 
-bool DEBUG = true;
+const bool DEBUG = false;
 
 struct ShipPos {
     int id;
@@ -402,9 +402,9 @@ int main(int argc, char* argv[]) {
 
         double time_thresh = 1.8;
         if (DEBUG) {
-            time_thresh = 1.0;
+            time_thresh = turnTimer.elapsed() + 0.2;
         }
-        if (gather_orders.size() > 1) while (optimizeTimer.elapsed() < time_thresh) {
+        if (gather_orders.size() > 1) while (turnTimer.elapsed() < time_thresh) {
             // swap 2 random orders
             // log::log(turnTimer.tostring());
             int order_1 = rand() % (int)gather_orders.size();
