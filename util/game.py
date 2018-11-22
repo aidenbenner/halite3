@@ -15,10 +15,11 @@ bot_args = []
 if debug:
     bot_args.append('--debug')
 if no_drops:
-    bot_args.append('--nodrops')
+    bot_args.append('--nodrop')
 if no_inspr:
     bot_args.append('--noinspr')
 bot_arg_str = ' '.join(bot_args)
+print('bot args %s', bot_arg_str)
 
 seed = random.randint(9900000,100000000)
 seed -= seed % 10000

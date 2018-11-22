@@ -146,7 +146,14 @@ int main(int argc, char* argv[]) {
     unsigned int rng_seed;
 
     if (argc > 1) {
-        rng_seed = static_cast<unsigned int>(stoul(argv[argc - 1]));
+        char *p;
+        int seed = strtol(argv[argc - 1], &p, 10);
+        if (*p) {
+            rng_seed = static_cast<unsigned int>(time(nullptr));
+        }
+        else {
+            rng_seed = static_cast<unsigned int>(seed);
+        }
     } else {
         rng_seed = static_cast<unsigned int>(time(nullptr));
     }
@@ -154,17 +161,21 @@ int main(int argc, char* argv[]) {
     mt19937 rng(rng_seed);
 
     for (int i = 0; i < argc; i++) {
+        log::log(argv[i]);
         if (std::string(argv[i]) == "--nodrop") {
             log::log("Dropoffs disabled");
             constants::DROPOFFS_ENABLED = false;
         }
-        if (std::string(argv[i]) == "--noinspr") {
+        else if (std::string(argv[i]) == "--noinspr") {
             log::log("Inspiration disabled");
             constants::INSPIRATION_ENABLED = false;
         }
-        if (std::string(argv[i]) == "--debug") {
+        else if (std::string(argv[i]) == "--debug") {
             log::log("Debug mode enabled");
             constants::IS_DEBUG = true;
+        }
+        else {
+
         }
     }
 
