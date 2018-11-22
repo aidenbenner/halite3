@@ -11,6 +11,11 @@
 
 using namespace std;
 using namespace hlt;
+using namespace constants;
+
+bool constants::INSPIRATION_ENABLED = true;
+bool constants::DROPOFFS_ENABLED = true;
+bool constants::IS_DEBUG = false;
 
 enum ShipState {
     GATHERING,
@@ -24,8 +29,6 @@ enum OrderType {
     GATHER,
     RETURN,
 };
-
-const bool DEBUG = false;
 
 struct ShipPos {
     int id;
@@ -127,7 +130,6 @@ struct Order {
         return priority < b.priority;
     }
 
-
     Position post() {
         return planned_dest;
     }
@@ -142,12 +144,33 @@ struct Order {
 
 int main(int argc, char* argv[]) {
     unsigned int rng_seed;
+
     if (argc > 1) {
-        rng_seed = static_cast<unsigned int>(stoul(argv[1]));
+        rng_seed = static_cast<unsigned int>(stoul(argv[argc - 1]));
     } else {
         rng_seed = static_cast<unsigned int>(time(nullptr));
     }
+
     mt19937 rng(rng_seed);
+
+    for (int i = 0; i < argc; i++) {
+        if (std::string(argv[i]) == "--nodrop") {
+            log::log("Dropoffs disabled");
+            constants::DROPOFFS_ENABLED = false;
+        }
+        if (std::string(argv[i]) == "--noinspr") {
+            log::log("Inspiration disabled");
+            constants::INSPIRATION_ENABLED = false;
+        }
+        if (std::string(argv[i]) == "--debug") {
+            log::log("Debug mode enabled");
+            constants::IS_DEBUG = true;
+        }
+    }
+
+    log::log("DROPOFFS_ENABLED", constants::DROPOFFS_ENABLED);
+    log::log("INSPIRATION_ENABLED", constants::INSPIRATION_ENABLED);
+    log::log("DEBUG_ENABLED", constants::IS_DEBUG);
 
     Game game;
 
@@ -159,9 +182,8 @@ int main(int argc, char* argv[]) {
     vector<int> halite_at_turn;
 
     bool save_for_drop = false;
-    const bool ENABLE_DROPOFFS = true;
 
-    game.ready("adbv35");
+    game.ready("adbv37");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     Timer turnTimer;
@@ -211,7 +233,7 @@ int main(int argc, char* argv[]) {
             }
             if (ship->halite >= constants::MAX_HALITE * 0.75) {
                 if (game.turn_number > constants::MAX_TURNS * 0.25) {
-                    if (ship->halite >= constants::MAX_HALITE * 0.95) {
+                    if (ship->halite >= constants::MAX_HALITE * 0.90) {
                         stateMp[id] = RETURNING;
                     }
                 }
@@ -228,85 +250,89 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // Gathering
-        // DROPOFFs
-        // shipyard is a dropoff
-        int expected_dropoffs = me->ships.size() / 15 + 1;
-        int curr_dropoffs = me->dropoffs.size();
+        if (DROPOFFS_ENABLED) {
+            // Gathering
+            // DROPOFFs
+            // shipyard is a dropoff
+            int expected_dropoffs = me->ships.size() / 15 + 1;
+            int curr_dropoffs = me->dropoffs.size();
 
-        Ship* best_dropoff = nullptr;
-        float curr_avg_halite = 0;
-        for (const auto& ship_iterator : me->ships) {
-            shared_ptr<Ship> ship = ship_iterator.second;
-            if (assigned.count(ship.get())) continue;
+            Ship* best_dropoff = nullptr;
+            float curr_avg_halite = 0;
+            for (const auto& ship_iterator : me->ships) {
+                shared_ptr<Ship> ship = ship_iterator.second;
+                if (assigned.count(ship.get())) continue;
 
-            int dist = game_map->calculate_distance(ship->position, closest_dropoff(ship->position, &game));
-            float avg_halite = game_map->avg_around_point(ship->position, 5);
+                int dist = game_map->calculate_distance(ship->position, closest_dropoff(ship->position, &game));
+                float avg_halite = game_map->avg_around_point(ship->position, 5);
 
-            if (game_map->at(ship)->halite > 4000 - ship->halite) {
-                curr_avg_halite = 9999999;
-                best_dropoff = ship.get();
-            }
-            if (remaining_turns > 100
-                && dist > game_map->width / 3
-                && avg_halite > 100
-                && curr_dropoffs < expected_dropoffs) {
-                if (avg_halite > curr_avg_halite) {
-                    curr_avg_halite = avg_halite;
+                if (game_map->at(ship)->halite > 4000 - ship->halite) {
+                    curr_avg_halite = 9999999;
                     best_dropoff = ship.get();
                 }
-            }
-        }
-        log::log(curr_avg_halite);
-
-        save_for_drop = false;
-        if (best_dropoff != nullptr && ENABLE_DROPOFFS) {
-            if (me->halite + best_dropoff->halite >= constants::DROPOFF_COST) {
-                auto ship = best_dropoff;
-                me->dropoffs[(int)-ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x, ship->position.y);
-                command_queue.push_back(ship->make_dropoff());
-                assigned.insert(ship);
-                closestDropMp.clear();
-                me->halite -= 4000;
-            }
-            else {
-                save_for_drop = true;
-            }
-        }
-        // END DROPOFFS
-
-        // GATHERING
-        /*
-        for (const auto& ship_iterator : me->ships) {
-            shared_ptr<Ship> ship = ship_iterator.second;
-            EntityId id = ship->id;
-            if (assigned.count(ship.get())) continue;
-            auto state = stateMp[id];
-            if (state == GATHERING || state == RETURNING) {
-                log::log("HAl percentile", game_map->get_halite_percentile(0.30), game_map->at(ship)->halite);
-                if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.30)) {
-                    if (state == RETURNING && ship->halite >= 899) {
-                        continue;
+                if (remaining_turns > 100
+                    && dist > game_map->width / 3
+                    && avg_halite > 100
+                    && curr_dropoffs < expected_dropoffs) {
+                    if (avg_halite > curr_avg_halite) {
+                        curr_avg_halite = avg_halite;
+                        best_dropoff = ship.get();
                     }
-                    proposed[ship->position.x][ship->position.y] = 1;
-                    command_queue.push_back(ship->stay_still());
-                    assigned.insert(ship.get());
-                    log::log("Ship is gathering", ship->id);
                 }
             }
-        }*/
+            log::log(curr_avg_halite);
+
+            save_for_drop = false;
+            if (best_dropoff != nullptr && DROPOFFS_ENABLED) {
+                if (me->halite + best_dropoff->halite >= constants::DROPOFF_COST) {
+                    auto ship = best_dropoff;
+                    me->dropoffs[(int)-ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x, ship->position.y);
+                    command_queue.push_back(ship->make_dropoff());
+                    assigned.insert(ship);
+                    closestDropMp.clear();
+                    me->halite -= 4000;
+                }
+                else {
+                    save_for_drop = true;
+                }
+            }
+            // END DROPOFFS
+
+            // GATHERING
+            /*
+            for (const auto& ship_iterator : me->ships) {
+                shared_ptr<Ship> ship = ship_iterator.second;
+                EntityId id = ship->id;
+                if (assigned.count(ship.get())) continue;
+                auto state = stateMp[id];
+                if (state == GATHERING || state == RETURNING) {
+                    log::log("HAl percentile", game_map->get_halite_percentile(0.30), game_map->at(ship)->halite);
+                    if (game_map->at(ship)->halite > game_map->get_halite_percentile(0.30)) {
+                        if (state == RETURNING && ship->halite >= 899) {
+                            continue;
+                        }
+                        proposed[ship->position.x][ship->position.y] = 1;
+                        command_queue.push_back(ship->stay_still());
+                        assigned.insert(ship.get());
+                        log::log("Ship is gathering", ship->id);
+                    }
+                }
+            }*/
+        }
 
         map<Position, BFSR> ship_to_dist;
         map<Position, BFSR> greedy_bfs;
         ship_to_dist.clear();
         for (auto s : me->ships) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
+            greedy_bfs[s.second->position] = game_map->BFS(s.second->position, true);
         }
         for (auto s : me->dropoffs) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
         }
 
 
+        set<EntityId> added;
         for (const auto& ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             if (assigned.count(ship.get())) continue;
@@ -318,7 +344,7 @@ int main(int argc, char* argv[]) {
             options = game_map->minCostOptions(pars, ship->position, mdest);
 
             if (state == RETURNING) {
-                 // options = game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
+                options = game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
             }
             ordersMap[ship->id] = Order{0, RETURNING, options, ship.get(), mdest};
         }
@@ -332,8 +358,8 @@ int main(int argc, char* argv[]) {
         map<double, VC<Cost>> costs;
         map<ShipPos, double> costMp;
         vector<Order> gather_orders;
-        set<EntityId> added;
 
+        log::log("Start gathering");
         for (auto s : me->ships) {
             shared_ptr<Ship> ship = s.second;
             if (assigned.count(ship.get())) continue;
@@ -347,6 +373,12 @@ int main(int argc, char* argv[]) {
 
             vector<Direction> options;
             VVI& dist = ship_to_dist[ship->position].dist;
+            /*
+            options = game_map->hc_plan_gather_path(ship->halite, ship->position);
+            gather_orders.push_back(Order{10, GATHERING, options, ship.get(), ship->position});
+            added.insert(ship->id);
+            ordersMap.erase(ship->id);*/
+
             for (int i = 0; i<game_map->width; i++) for (int k = 0; k<game_map->width; k++) {
                     auto dest = Position(i, k);
                     auto drop = closest_dropoff(dest, &game);
@@ -360,8 +392,9 @@ int main(int argc, char* argv[]) {
                             // Always wait
                             claimed.insert(dest);
                             added.insert(ship->id);
-                            gather_orders.push_back(Order{10, GATHERING, vector<Direction>(1, Direction::STILL), ship.get(), dest});
+                            gather_orders.push_back(Order{5, GATHERING, vector<Direction>(1, Direction::STILL), ship.get(), dest});
                             ordersMap.erase(ship->id);
+                            log::log("Ship ", ship->id, " staying at ", dest);
                         }
                     }
                     if (!costs.count(c)) costs[c] = VC<Cost>();
@@ -373,7 +406,6 @@ int main(int argc, char* argv[]) {
         }
 
         auto cost_itr = costs.begin();
-
         while(cost_itr != costs.end()) {
             for (auto cost : cost_itr->second) {
                 if (added.count(cost.s->id)) continue;
@@ -384,8 +416,9 @@ int main(int argc, char* argv[]) {
                 //options = game_map->plan_gather_path(cost.s->halite, cost.s->position, mdest);
                 //if (options.size() == 0)
                 //   continue;
-                //game_map->plan_min_cost_route(greedy_bfs[cost.s->position].parent, cost.s->halite, cost.s->position, mdest);
-                options = game_map->get_unsafe_moves(cost.s->position, mdest);// game_map->dirsFrompath(game_map->traceBackPath(greedy_bfs[cost.s->position].parent, cost.s->position, mdest));
+                options = game_map->minCostOptions(greedy_bfs[cost.s->position].parent, cost.s->position, mdest);
+                //options = game_map->get_unsafe_moves(cost.s->position, mdest);// game_map->dirsFrompath(game_map->traceBackPath(greedy_bfs[cost.s->position].parent, cost.s->position, mdest));
+                log::log("Ship ", cost.s->id, " moving to ", mdest);
 
                 added.insert(cost.s->id);
                 claimed.insert(mdest);
@@ -397,16 +430,55 @@ int main(int argc, char* argv[]) {
         }
 
         log::log("gather size", gather_orders.size());
+
         Timer optimizeTimer = Timer{"Optimize Timer"};
         optimizeTimer.start();
 
         double time_thresh = 1.8;
-        if (DEBUG) {
-            time_thresh = turnTimer.elapsed() + 0.2;
-        }
         if (gather_orders.size() > 1) while (turnTimer.elapsed() < time_thresh) {
             // swap 2 random orders
             // log::log(turnTimer.tostring());
+            int gsize = gather_orders.size();
+            for (int i = 0; i<gsize; i++) {
+                for (int k = i+1; k<gsize; k++) {
+                    int order_1 = i;
+                    int order_2 = k;
+
+                    // log::log(order_1);
+                    if (order_1 == order_2) continue;
+
+                    Order& o1 = gather_orders[order_1];
+                    Order& o2 = gather_orders[order_2];
+
+                    auto shipPos1 = ShipPos{o1.ship->id, o1.planned_dest};
+                    auto shipPos2 = ShipPos{o2.ship->id, o2.planned_dest};
+
+                    auto swapped1 = ShipPos{o1.ship->id, o2.planned_dest};
+                    auto swapped2 = ShipPos{o2.ship->id, o1.planned_dest};
+
+                    double startCost = costMp[shipPos1] + costMp[shipPos2];
+                    double newCost = costMp[swapped1] + costMp[swapped2];
+
+                    int x = game_map->calculate_distance(o1.ship->position, o1.planned_dest);
+                    int y = game_map->calculate_distance(o2.ship->position, o2.planned_dest);
+                    startCost = x * x + y * y;
+                    x = game_map->calculate_distance(o1.ship->position, o2.planned_dest);
+                    y = game_map->calculate_distance(o2.ship->position, o1.planned_dest);
+                    newCost = x * x + y * y;
+
+                    if (newCost < startCost) {
+                        // swap the orders
+                        o1.next_dirs = game_map->minCostOptions(greedy_bfs[o1.ship->position].parent, o1.ship->position, o2.planned_dest);
+                        o2.next_dirs = game_map->minCostOptions(greedy_bfs[o2.ship->position].parent, o2.ship->position, o1.planned_dest);
+                        auto tmp = o1.planned_dest;
+                        o1.planned_dest = o2.planned_dest;
+                        o2.planned_dest = tmp;
+                        log::log("Cost gain of ", newCost, startCost, o1.ship->id, o2.ship->id);
+                    }
+                }
+            }
+
+            /*
             int order_1 = rand() % (int)gather_orders.size();
             int order_2 = rand() % (int)gather_orders.size();
 
@@ -425,11 +497,6 @@ int main(int argc, char* argv[]) {
             double startCost = costMp[shipPos1] + costMp[shipPos2];
             double newCost = costMp[swapped1] + costMp[swapped2];
 
-            startCost = game_map->calculate_distance(o1.ship->position, o1.planned_dest)
-                    +   game_map->calculate_distance(o2.ship->position, o2.planned_dest);
-            newCost = game_map->calculate_distance(o1.ship->position, o2.planned_dest)
-                +   game_map->calculate_distance(o2.ship->position, o1.planned_dest);
-
             if (newCost < startCost) {
                 // swap the orders
                 o1.next_dirs = game_map->get_unsafe_moves(o1.ship->position, o2.planned_dest);
@@ -438,7 +505,7 @@ int main(int argc, char* argv[]) {
                 o1.planned_dest = o2.planned_dest;
                 o2.planned_dest = tmp;
                 log::log("Cost gain of ", newCost, startCost);
-            }
+            }*/
         }
 
         VC<Order> orders;
@@ -449,6 +516,7 @@ int main(int argc, char* argv[]) {
 
         sort(orders.begin(), orders.end());
 
+        log::log("Starting resolve phase");
         for (const auto& order : orders) {
             auto ship = order.ship;
             if (assigned.count(ship)) continue;

@@ -127,11 +127,14 @@ public:
         }
 
 
-        BFSR BFS(Position source) {
+        BFSR BFS(Position source, bool greedy=false) {
             // dfs out of source to the entire map
             set<Position> visited;
 
             int def = 1e8;
+            if (greedy)
+                def = -1e8;
+
             vector<vector<int>> dist(width,vector<int>(height,def));
             vector<vector<Position>> parent(width,vector<Position>(height, {-1, -1}));
 
@@ -157,12 +160,24 @@ public:
 
                     for (auto d : ALL_CARDINALS) {
                         auto f = normalize(p.directional_offset(d));
-                        // if (parent[f.x][f.y].x == -1) continue;
-
                         int c = at(f)->cost() + dist[f.x][f.y];
-                        if (c <= dist[p.x][p.y]) {
-                            dist[p.x][p.y] = c;
-                            parent[p.x][p.y] = f;
+                        if (greedy) {
+                            if (at(f)->halite < get_halite_percentile(0.4)) {
+                                c = dist[f.x][f.y];
+                            }
+                            else {
+                                c = at(f)->halite - get_halite_percentile(0.4) + dist[f.x][f.y];
+                            }
+                            if (c >= dist[p.x][p.y]) {
+                                dist[p.x][p.y] = c;
+                                parent[p.x][p.y] = f;
+                            }
+                        }
+                        else {
+                            if (c <= dist[p.x][p.y]) {
+                                dist[p.x][p.y] = c;
+                                parent[p.x][p.y] = f;
+                            }
                         }
                     }
                 }
@@ -181,6 +196,25 @@ public:
             std::reverse(path.begin(), path.end());
 
             return path;
+        }
+
+        void random_walk(VC<Position> &walk, int length, int seed) {
+            if (length <= 0) return;
+            auto next = walk.back().directional_offset(ALL_CARDINALS[(seed + rand() % 3) % 4]);
+            bool found = true;
+            int max_itr = 20;
+            int i = 0;
+            while (found && i < max_itr) {
+                i++;
+                found = false;
+                for (int i = 0; i<(int)walk.size(); i++) {
+                    if (next == walk[i]) {
+                        found = true;
+                    }
+                }
+            }
+            walk.push_back(normalize(next));
+            random_walk(walk, length - 1, seed);
         }
 
         VC<Position> random_walk(int starting_halite, Position start, Position dest) {
@@ -238,14 +272,40 @@ public:
             // get sum of walk
             int out = 0;
             for (int i = 1; i<(int)p.size(); i++) {
+                out += hal_at(p[i], i-1);
+                /*
                 if (p[i] == p[i-1]) {
                     out += hal_at(p[i-1], i-1) * 0.25;
                 }
                 else {
                     out -= hal_at(p[i-1], i-1) * 0.1;
+                }*/
+            }
+            return out;
+        }
+
+        vector<Direction> hc_plan_gather_path(int starting_halite, Position start) {
+            auto walks = VC<VC<Position>>();
+            auto allowed_walks = VC<VC<Position>>();
+            VC<Position> chosen_walk;
+            int mcost = -100;
+            for (int i = 0; i<5000; i++) {
+                vector<Position> walk = {start};
+                int turns = rand() % 60 + 10;
+                random_walk(walk, turns, rand());
+                walks.push_back(wait_adjust(starting_halite, walk, 0));
+                int cost = getPathCost(walks[i]) / turns;
+                if (cost > mcost) {
+                    log::log(cost);
+                    mcost = cost;
+                    chosen_walk = walks[i];
                 }
             }
-            return out / p.size();
+            if (mcost == -100) {
+                return vector<Direction>(1, Direction::STILL);
+            }
+            addPlanned(0, chosen_walk);
+            return dirsFrompath(chosen_walk);
         }
 
         vector<Direction> plan_gather_path(int starting_halite, Position start, Position dest) {
@@ -254,7 +314,7 @@ public:
            auto allowed_walks = VC<VC<Position>>();
            VC<Position> chosen_walk;
            int mcost = -100;
-           for (int i = 0; i<500; i++) {
+           for (int i = 0; i<5000; i++) {
                walks.push_back(wait_adjust(starting_halite, random_walk(starting_halite, start, dest), 0));
                int cost = getPathCost(walks[i]);
 
@@ -270,23 +330,23 @@ public:
             return dirsFrompath(chosen_walk);
         }
 
-        vector<Direction> plan_min_cost_route(VVP parents, int starting_halite, Position start, Position dest) {
+        vector<Direction> plan_min_cost_route(VVP parents, int starting_halite, Position start, Position dest, int time = 0) {
             VC<Position> path = traceBackPath(parents, start, dest);
 
             int pind = 0;
             auto curr = start;
             int curr_h = starting_halite;
-            int time = 0;
             int wturns = 0;
 
+            int tmp_time = time;
             auto max_halite_pos = start;
             while (curr != dest) {
-            //    log::log(curr, dest, checkIfPlanned(time, curr), curr_h, at(curr)->cost());
+                //  log::log(curr, dest, checkIfPlanned(time, curr), curr_h, at(curr)->cost());
                 if (at(curr)->halite > at(max_halite_pos)->halite) {
                     max_halite_pos = curr;
                 }
                 // Assuming halite stays constant
-                if (!checkIfPlanned(time, curr) && curr_h > at(curr)->cost()) {
+                if (!checkIfPlanned(tmp_time, curr) && curr_h > at(curr)->cost()) {
                     curr_h -= at(curr)->cost();
                     curr = path[++pind];
                 }
@@ -299,14 +359,29 @@ public:
                     time += 1;
                     break;
                 }
-                time += 1;
+                tmp_time += 1;
             }
             // we had to wait a turn
-            if (wturns > 0 && max_halite_pos == start) {
-                return vector<Direction>(1, Direction::STILL);
+            if (wturns > 0) {
+                int tmp_time = time;
+                curr_h = starting_halite;
+                for (int i = 0; i<(int)path.size(); i++) {
+                    addPlanned(tmp_time, path[i]);
+                    if (path[i] == max_halite_pos) {
+                        tmp_time++;
+                        curr_h += at(curr)->gain();
+                        plan_min_cost_route(parents, curr_h, max_halite_pos, dest, tmp_time);
+                        if (max_halite_pos == start) {
+                            return vector<Direction>(1, Direction::STILL);
+                        }
+                        break;
+                    }
+                    tmp_time += 1;
+                    curr_h -= at(curr)->cost();
+                }
+                return minCostOptions(parents, start, dest);
             }
 
-            time = 0;
             for (auto p : path) {
                 addPlanned(time, p);
                 time++;
@@ -421,10 +496,9 @@ public:
         inline double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1) {
             if (dest == shipyard) return 10000000;
             // if (at(dest)->occupied_by_not(pid)) return 100000000;
-
             int turns_to = calculate_distance(s->position, dest);
             int turns_back = calculate_distance(dest, shipyard);
-            int turns = turns_to + turns_back;
+            double turns = turns_to + turns_back;
 
             int halite = at(dest)->halite;
             if (turns_to <= 4) {
@@ -438,12 +512,15 @@ public:
 
             //to_cost = 0;
             //int avg_hal = avg_around_point(dest, 1);
+            to_cost = 0;
+            home_cost = 0;
             double out = (halite - to_cost - home_cost) / (double)turns;
             return -out;
         }
 
         map<Position, bool> inspiredMemo;
         bool is_inspired(Position p, PlayerId id) {
+            if (!constants::INSPIRATION_ENABLED) return false;
             if (inspiredMemo.count(p)) return inspiredMemo[p];
             int radius = constants::INSPIRATION_RADIUS * 2;
             int enemies = 0;

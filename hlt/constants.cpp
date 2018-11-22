@@ -15,7 +15,6 @@ namespace hlt {
         int MAX_TURNS;
         int EXTRACT_RATIO;
         int MOVE_COST_RATIO;
-        bool INSPIRATION_ENABLED;
         int INSPIRATION_RADIUS;
         int INSPIRATION_SHIP_COUNT;
         int INSPIRED_EXTRACT_RATIO;
@@ -102,7 +101,7 @@ void hlt::constants::populate_constants(const std::string& string_from_engine) {
     MAX_TURNS = get_int(constants_map, "MAX_TURNS");
     EXTRACT_RATIO = get_int(constants_map, "EXTRACT_RATIO");
     MOVE_COST_RATIO = get_int(constants_map, "MOVE_COST_RATIO");
-    INSPIRATION_ENABLED = get_bool(constants_map, "INSPIRATION_ENABLED");
+    // INSPIRATION_ENABLED = get_bool(constants_map, "INSPIRATION_ENABLED");
     INSPIRATION_RADIUS = get_int(constants_map, "INSPIRATION_RADIUS");
     INSPIRATION_SHIP_COUNT = get_int(constants_map, "INSPIRATION_SHIP_COUNT");
     INSPIRED_EXTRACT_RATIO = get_int(constants_map, "INSPIRED_EXTRACT_RATIO");
