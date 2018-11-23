@@ -4,7 +4,7 @@ set -e
 
 cmake .
 make
-./halite --replay-directory replays/ -vvv "./bots/v36" "./MyBot"
+./halite --replay-directory replays/ -vvv "./bots/v27" "./MyBot"
 #./halite --replay-directory replays/ -vvv "./benchmarks/RandomBot.py" "./MyBot"
 #./halite --replay-directory replays/ -vvv --width 48 --height 48  "./MyBot" "./benchmarks/RandomBot.py"  --seed 243
 # ./halite --replay-directory replays/ -vvv "./MyBot" "./bots/AlexBot" 

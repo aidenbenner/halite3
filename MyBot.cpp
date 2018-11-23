@@ -17,6 +17,8 @@ bool constants::INSPIRATION_ENABLED = true;
 bool constants::DROPOFFS_ENABLED = true;
 bool constants::IS_DEBUG = false;
 
+typedef VC<Position> Path;
+
 enum ShipState {
     GATHERING,
     EXPLORING,
@@ -199,6 +201,7 @@ int main(int argc, char* argv[]) {
 
     Timer turnTimer;
 
+    map<EntityId, Path> lastPath;
     for (;;) {
         turnTimer.start();
 
@@ -207,6 +210,8 @@ int main(int argc, char* argv[]) {
         closestDropMp.clear();
         shared_ptr<Player> me = game.me;
         shared_ptr<Player> opponent = game.players[0];
+
+
         if (opponent->id == me->id)
             opponent = game.players[1];
 
@@ -268,9 +273,9 @@ int main(int argc, char* argv[]) {
             int expected_dropoffs = me->ships.size() / 15 + 1;
             int curr_dropoffs = me->dropoffs.size();
 
-            Ship* best_dropoff = nullptr;
+            Ship *best_dropoff = nullptr;
             float curr_avg_halite = 0;
-            for (const auto& ship_iterator : me->ships) {
+            for (const auto &ship_iterator : me->ships) {
                 shared_ptr<Ship> ship = ship_iterator.second;
                 if (assigned.count(ship.get())) continue;
 
@@ -297,13 +302,13 @@ int main(int argc, char* argv[]) {
             if (best_dropoff != nullptr && DROPOFFS_ENABLED) {
                 if (me->halite + best_dropoff->halite >= constants::DROPOFF_COST) {
                     auto ship = best_dropoff;
-                    me->dropoffs[(int)-ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x, ship->position.y);
+                    me->dropoffs[(int) -ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x,
+                                                                              ship->position.y);
                     command_queue.push_back(ship->make_dropoff());
                     assigned.insert(ship);
                     closestDropMp.clear();
                     me->halite -= 4000;
-                }
-                else {
+                } else {
                     save_for_drop = true;
                 }
             }
@@ -371,6 +376,8 @@ int main(int argc, char* argv[]) {
         vector<Order> gather_orders;
 
         log::log("Start gathering");
+
+        // Gather w/ cost heuristic
         for (auto s : me->ships) {
             shared_ptr<Ship> ship = s.second;
             if (assigned.count(ship.get())) continue;
@@ -384,11 +391,12 @@ int main(int argc, char* argv[]) {
 
             vector<Direction> options;
             VVI& dist = ship_to_dist[ship->position].dist;
-            /*
-            options = game_map->hc_plan_gather_path(ship->halite, ship->position);
-            gather_orders.push_back(Order{10, GATHERING, options, ship.get(), ship->position});
-            added.insert(ship->id);
-            ordersMap.erase(ship->id);*/
+
+
+            // options = game_map->hc_plan_gather_path(ship->halite, ship->position);
+            // gather_orders.push_back(Order{10, GATHERING, options, ship.get(), ship->position});
+            // added.insert(ship->id);
+            // ordersMap.erase(ship->id);
 
             for (int i = 0; i<game_map->width; i++) for (int k = 0; k<game_map->width; k++) {
                     auto dest = Position(i, k);
@@ -401,6 +409,7 @@ int main(int argc, char* argv[]) {
                     if (ship->position == dest) {
                         if (game_map->at(dest)->halite > game_map->get_halite_percentile(0.4)) {
                             // Always wait
+                            // These are our next targets
                             claimed.insert(dest);
                             added.insert(ship->id);
                             gather_orders.push_back(Order{5, GATHERING, vector<Direction>(1, Direction::STILL), ship.get(), dest});
@@ -441,7 +450,46 @@ int main(int argc, char* argv[]) {
         }
 
         log::log("gather size", gather_orders.size());
+        // Gather w/ HC
+        Timer optimizeTimer = Timer{"Optimize Timer"};
+        optimizeTimer.start();
 
+        map<EntityId, Path> currBestPath;
+        for (auto s : me->ships) {
+            auto id = s.second->id;
+            currBestPath[id] = vector<Position>();
+            if (lastPath.count(id)) {
+                if (lastPath[id][1] == s.second->position) {
+                    currBestPath[id] = vector<Position>(lastPath[id].begin() + 1, lastPath[id].end());
+                }
+            }
+        }
+
+        double time_thresh = 1.8;
+        if (IS_DEBUG) {
+            time_thresh = 0.1;
+        }
+
+        while (optimizeTimer.elapsed() < time_thresh) {
+            game_map->clearPlanned();
+            for (auto o : gather_orders) {
+                auto ship = o.ship;
+                if (assigned.count(ship)) continue;
+                if (stateMp[ship->id] != GATHERING) continue;
+                currBestPath[ship->id] = game_map->hc_plan_gather_path(ship->halite, ship->position, o.planned_dest, currBestPath[ship->id]);
+            }
+        }
+
+        for (auto s : me->ships) {
+            auto ship = s.second;
+            if (assigned.count(ship.get())) continue;
+            if (stateMp[ship->id] != GATHERING) continue;
+            ship->log("Gathering");
+            ordersMap[ship->id] = (Order{10, GATHERING, game_map->dirsFrompath(currBestPath[ship->id]),
+                                         ship.get(), ship->position});
+        }
+
+        /*
         Timer optimizeTimer = Timer{"Optimize Timer"};
         optimizeTimer.start();
 
@@ -489,7 +537,6 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-            /*
             int order_1 = rand() % (int)gather_orders.size();
             int order_2 = rand() % (int)gather_orders.size();
 
@@ -516,11 +563,12 @@ int main(int argc, char* argv[]) {
                 o1.planned_dest = o2.planned_dest;
                 o2.planned_dest = tmp;
                 log::log("Cost gain of ", newCost, startCost);
-            }*/
-        }
+            }
+        }*/
+
 
         VC<Order> orders;
-        orders = gather_orders;
+        //orders = gather_orders;
         for (auto s : ordersMap) {
             orders.push_back(s.second);
         }
@@ -619,14 +667,15 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        log::log(turnTimer.tostring());
 
+        bool end_turn = !game.end_turn(command_queue);
+        log::log(turnTimer.tostring());
         log::log("Score:");
         log::log(me->halite, opponent->halite);
+        log::log(me->ships.size(), opponent->ships.size());
         log::log("Hal percentile ", game_map->get_halite_percentile(0.5));
         log::log("Hal percentile ", game_map->get_halite_percentile(0.4));
-
-        if (!game.end_turn(command_queue)) {
+        if (end_turn) {
             break;
         }
     }

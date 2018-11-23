@@ -55,6 +55,10 @@ public:
             return planned_route.count(TimePos{future_turns, p});
         }
 
+        void clearPlanned() {
+            planned_route.clear();
+        }
+
         int hal_at(Position p, int turn) {
             if (turn == 0) {
                 return at(p)->halite;
@@ -272,7 +276,8 @@ public:
             // get sum of walk
             int out = 0;
             for (int i = 1; i<(int)p.size(); i++) {
-                out += hal_at(p[i], i-1);
+                int hal = at(p[i])->halite;
+                out += hal;
                 /*
                 if (p[i] == p[i-1]) {
                     out += hal_at(p[i-1], i-1) * 0.25;
@@ -284,28 +289,46 @@ public:
             return out;
         }
 
-        vector<Direction> hc_plan_gather_path(int starting_halite, Position start) {
+        vector<Position> hc_plan_gather_path(int starting_halite, Position start, Position end, vector<Position> starting_path) {
             auto walks = VC<VC<Position>>();
             auto allowed_walks = VC<VC<Position>>();
-            VC<Position> chosen_walk;
-            int mcost = -100;
-            for (int i = 0; i<5000; i++) {
-                vector<Position> walk = {start};
-                int turns = rand() % 60 + 10;
-                random_walk(walk, turns, rand());
+            VC<Position> chosen_walk = starting_path;
+            double mcost = getPathCost(starting_path) / (double)max(1, (int)starting_path.size());
+            for (int i = 0; i<50; i++) {
+                vector<Position> walk = random_walk(starting_halite, start, end);
                 walks.push_back(wait_adjust(starting_halite, walk, 0));
-                int cost = getPathCost(walks[i]) / turns;
+                // log::log(i, walk.size());
+                double cost = getPathCost(walks[i]) / (double)max(1, (int)walk.size());
+                // double cost = getPathCost(walks[i]);
                 if (cost > mcost) {
-                    log::log(cost);
+                    // log::log(cost);
                     mcost = cost;
                     chosen_walk = walks[i];
                 }
             }
-            if (mcost == -100) {
-                return vector<Direction>(1, Direction::STILL);
+            addPlanned(0, chosen_walk);
+            return chosen_walk;
+        }
+
+        vector<Position> hc_plan_gather_path(int starting_halite, Position start, vector<Position> starting_path) {
+            auto walks = VC<VC<Position>>();
+            auto allowed_walks = VC<VC<Position>>();
+            VC<Position> chosen_walk = starting_path;
+            int mcost = getPathCost(starting_path);
+            for (int i = 0; i<50; i++) {
+                vector<Position> walk = {start};
+                int turns = rand() % 30 + 5;
+                random_walk(walk, turns, rand());
+                walks.push_back(wait_adjust(starting_halite, walk, 0));
+                double cost = getPathCost(walks[i]) / (double)turns;
+                if (cost > mcost) {
+                       // log::log(cost);
+                    mcost = cost;
+                    chosen_walk = walks[i];
+                }
             }
             addPlanned(0, chosen_walk);
-            return dirsFrompath(chosen_walk);
+            return chosen_walk;
         }
 
         vector<Direction> plan_gather_path(int starting_halite, Position start, Position dest) {
