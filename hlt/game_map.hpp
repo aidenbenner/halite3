@@ -46,10 +46,22 @@ public:
         int height;
         std::vector<std::vector<MapCell>> cells;
 
+        // Planning for the future: planned = planned + set
         std::set<TimePos> planned_route;
         // std::map<Position, int> future_halite;
 
         std::map<Position, set<int>> hal_mp;
+
+        // set_route contains the next turn state.
+        std::set<TimePos> set_route;
+        bool checkSet(int future_turns, Position p) {
+            return set_route.count(TimePos{future_turns, p});
+        }
+
+        void addSet(int future_turns, Position p) {
+            set_route.insert(TimePos{future_turns, p});
+            addPlanned(1, p);
+        }
 
         bool checkIfPlanned(int future_turns, Position p) {
             return planned_route.count(TimePos{future_turns, p});
@@ -57,6 +69,17 @@ public:
 
         void clearPlanned() {
             planned_route.clear();
+            planned_route = set_route;
+        }
+
+        void addPlanned(int future_turns, VC<Position> p) {
+            for (int i = 0; i<(int)p.size(); i++) {
+                planned_route.insert(TimePos{i, p[i]});
+            }
+        }
+
+        void addPlanned(int future_turns, Position p) {
+            planned_route.insert(TimePos{future_turns, p});
         }
 
         int hal_at(Position p, int turn) {
@@ -78,15 +101,6 @@ public:
             hal_mp[p].insert(turn);
         }
 
-        void addPlanned(int future_turns, VC<Position> p) {
-            for (int i = 0; i<(int)p.size(); i++) {
-                planned_route.insert(TimePos{i, p[i]});
-            }
-        }
-
-        void addPlanned(int future_turns, Position p) {
-            planned_route.insert(TimePos{future_turns, p});
-        }
 
         MapCell* at(const Position& position) {
             Position normalized = normalize(position);
@@ -153,6 +167,11 @@ public:
                 while(!frontier.empty()) {
                     auto p = frontier.back();
                     frontier.pop_back();
+
+                    if (at(p)->is_occupied()) {
+                        continue;
+                    }
+
                     if (visited.count(p)) {
                         continue;
                     }
@@ -166,11 +185,11 @@ public:
                         auto f = normalize(p.directional_offset(d));
                         int c = at(f)->cost() + dist[f.x][f.y];
                         if (greedy) {
-                            if (at(f)->halite < get_halite_percentile(0.4)) {
+                            if (at(f)->halite < get_halite_percentile(0.5)) {
                                 c = dist[f.x][f.y];
                             }
                             else {
-                                c = at(f)->halite - get_halite_percentile(0.4) + dist[f.x][f.y];
+                                c = at(f)->halite + dist[f.x][f.y];
                             }
                             if (c >= dist[p.x][p.y]) {
                                 dist[p.x][p.y] = c;
@@ -191,11 +210,14 @@ public:
 
         vector<Position> traceBackPath(VVP parents, Position start, Position dest) {
             Position curr = dest;
-            VC<Position> path;
+            VC<Position> path(1, dest);
 
             while (curr != start) {
                 curr = parents[curr.x][curr.y];
                 path.push_back(curr);
+                if (curr == Position{-1, -1}) {
+                    return VC<Position>{start, curr};
+                }
             }
             std::reverse(path.begin(), path.end());
 
@@ -353,8 +375,16 @@ public:
             return dirsFrompath(chosen_walk);
         }
 
-        vector<Direction> plan_min_cost_route(VVP parents, int starting_halite, Position start, Position dest, int time = 0) {
+        vector<Direction> plan_min_cost_route(VVP parents, int starting_halite, Position start, Position dest, int time = 1) {
             VC<Position> path = traceBackPath(parents, start, dest);
+            if (path.back() == Position{-1, -1}) {
+                path = random_walk(starting_halite, start, dest);
+                for (auto p : path) {
+                    log::log(p);
+                }
+            }
+            assert(path[0] == start);
+            assert(path.back() == dest);
 
             int pind = 0;
             auto curr = start;
@@ -384,6 +414,7 @@ public:
                 }
                 tmp_time += 1;
             }
+
             // we had to wait a turn
             if (wturns > 0) {
                 int tmp_time = time;
@@ -416,6 +447,8 @@ public:
             if (start == dest) {
                 return vector<Direction>(1, Direction::STILL);
             }
+            if (pos[dest.x][dest.y] == Position {-1, -1})
+                return get_unsafe_moves(start, dest);
             Position curr = dest;
             Direction move = Direction::STILL;
             while (curr != start) {
@@ -518,13 +551,20 @@ public:
 
         inline double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1) {
             if (dest == shipyard) return 10000000;
+
+            int halite = at(dest)->halite;
+
             // if (at(dest)->occupied_by_not(pid)) return 100000000;
             int turns_to = calculate_distance(s->position, dest);
             int turns_back = calculate_distance(dest, shipyard);
             double turns = turns_to + turns_back;
 
-            int halite = at(dest)->halite;
             if (turns_to <= 4) {
+                if (at(dest)->occupied_by_not(pid) && is_1v1) {
+                    if (s->halite + 200 < at(dest)->ship->halite) {
+                        halite += at(dest)->ship->halite;
+                    }
+                }
                 if (is_inspired(dest, pid)) {
                     halite *= 3;
                 }
@@ -537,7 +577,7 @@ public:
             //int avg_hal = avg_around_point(dest, 1);
             to_cost = 0;
             home_cost = 0;
-            double out = (halite - to_cost - home_cost) / (double)turns;
+            double out = (halite) / (double)turns;
             return -out;
         }
 

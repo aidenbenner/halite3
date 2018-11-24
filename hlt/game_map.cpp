@@ -17,6 +17,7 @@ void hlt::GameMap::_update() {
 
     hal_mp.clear();
     planned_route.clear();
+    set_route.clear();
     inspiredMemo.clear();
 
     int update_count;
