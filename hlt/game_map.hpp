@@ -168,13 +168,15 @@ public:
                     auto p = frontier.back();
                     frontier.pop_back();
 
-                    if (at(p)->is_occupied()) {
-                        continue;
-                    }
-
                     if (visited.count(p)) {
                         continue;
                     }
+
+                    if (p != source && at(p)->is_occupied()) {
+                        visited.insert(p);
+                        continue;
+                    }
+
                     visited.insert(p);
 
                     for (auto d : ALL_CARDINALS) {
@@ -540,7 +542,7 @@ public:
         }
 
         int get_mine_threshold() {
-            return min(99, get_halite_percentile(0.5));
+            return max(10, min(99, get_halite_percentile(0.5)));
         }
 
         bool should_mine(Position p) {

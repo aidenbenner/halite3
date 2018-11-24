@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
 
     bool save_for_drop = false;
-    game.ready("adbv39");
+    game.ready("adbv40");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     // Timers
@@ -304,6 +304,7 @@ int main(int argc, char* argv[]) {
             // END DROPOFFS
         }
 
+        log::log("Before BFS", turnTimer.elapsed());
         map<Position, BFSR> ship_to_dist;
         map<Position, BFSR> greedy_bfs;
         ship_to_dist.clear();
@@ -314,6 +315,7 @@ int main(int argc, char* argv[]) {
         for (auto s : me->dropoffs) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
         }
+        log::log("After BFS", turnTimer.elapsed());
 
 
         set<EntityId> added;
@@ -331,7 +333,7 @@ int main(int argc, char* argv[]) {
                 // options = game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
                 int hal_on_square = game_map->at(ship->position)->halite;
                 if (hal_on_square >= game_map->get_mine_threshold()) {
-                    if (hal_on_square * 0.25 + ship->halite <= 1000) {
+                    if (hal_on_square * 0.25 + ship->halite < 1000) {
                         auto stay_opts = vector<Direction>{1, Direction::STILL};
                         stay_opts.insert(stay_opts.end(), options.begin(), options.end());
                         ordersMap[ship->id] = Order{0, RETURNING, stay_opts, ship.get(), mdest};
@@ -386,7 +388,7 @@ int main(int argc, char* argv[]) {
                         if (game_map->at(dest)->halite >= game_map->get_mine_threshold()) {
                             // Always wait
                             // These are our next targets
-//                            claimed.insert(dest);
+                            claimed.insert(dest);
                             added.insert(ship->id);
                             gather_orders.push_back(Order{5, GATHERING, vector<Direction>(1, Direction::STILL), ship.get(), dest});
                             ordersMap.erase(ship->id);
