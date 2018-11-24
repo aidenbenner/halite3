@@ -185,7 +185,7 @@ public:
                         auto f = normalize(p.directional_offset(d));
                         int c = at(f)->cost() + dist[f.x][f.y];
                         if (greedy) {
-                            if (at(f)->halite < get_halite_percentile(0.5)) {
+                            if (at(f)->halite < get_mine_threshold()) {
                                 c = dist[f.x][f.y];
                             }
                             else {
@@ -264,7 +264,7 @@ public:
             int curr_hal = starting_halite;
             VC<Position> adjusted;
             for (auto a : walk) {
-                while (hal_at(a,turn) >= get_halite_percentile(0.50) || curr_hal < 0.1 * hal_at(a, turn)) {
+                while (hal_at(a,turn) >= get_mine_threshold() || curr_hal < 0.1 * hal_at(a, turn)) {
                     if (curr_hal > 900) break;
                     curr_hal += ceil(0.25 * hal_at(a, turn));
                     turn++;
@@ -539,6 +539,14 @@ public:
             return out;
         }
 
+        int get_mine_threshold() {
+            return min(99, get_halite_percentile(0.5));
+        }
+
+        bool should_mine(Position p) {
+            return at(p)->halite > get_mine_threshold();
+        }
+
         int get_total_halite() {
             int sum = 0;
             for (int i = 0; i<width; i++) {
@@ -559,17 +567,19 @@ public:
             int turns_back = calculate_distance(dest, shipyard);
             double turns = turns_to + turns_back;
 
-            if (turns_to <= 4) {
+            if (turns_to <= 1) {
                 if (at(dest)->occupied_by_not(pid) && is_1v1) {
                     if (s->halite + 200 < at(dest)->ship->halite) {
                         halite += at(dest)->ship->halite;
                     }
                 }
+            }
+            if (turns_to <= 4) {
                 if (is_inspired(dest, pid)) {
                     halite *= 3;
                 }
             }
-            if (halite < get_halite_percentile(0.5)) {
+            if (halite < get_mine_threshold()) {
                 return 10000;
             }
 
