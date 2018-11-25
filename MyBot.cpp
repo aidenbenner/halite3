@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
 
     bool save_for_drop = false;
-    game.ready("adbv40");
+    game.ready("adbv43");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     // Timers
@@ -330,7 +330,6 @@ int main(int argc, char* argv[]) {
             options = game_map->minCostOptions(pars, ship->position, mdest);
 
             if (state == RETURNING) {
-                // options = game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
                 int hal_on_square = game_map->at(ship->position)->halite;
                 if (hal_on_square >= game_map->get_mine_threshold()) {
                     if (hal_on_square * 0.25 + ship->halite < 1000) {
@@ -340,6 +339,7 @@ int main(int argc, char* argv[]) {
                         continue;
                     }
                 }
+                options = game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
             }
             ordersMap[ship->id] = Order{0, RETURNING, options, ship.get(), mdest};
         }
@@ -504,17 +504,20 @@ int main(int argc, char* argv[]) {
         }
 
         int ship_target = 10;
+        bool should_spawn;
         if (is_1v1) {
             ship_target = max(10, (int)opponent->ships.size());
+            should_spawn = remaining_turns > 220 || (int) me->ships.size() < ship_target;
         }
+        else {
+            should_spawn = game.turn_number <= constants::SPAWN_STOP[game_map->width];
+        }
+
+
         if (me->halite >= save_to &&
-            !game_map->checkSet(1, shipyard_pos))
+            !game_map->checkSet(1, shipyard_pos) && should_spawn)
         {
-            if (remaining_turns > 220 || (int) me->ships.size() < ship_target) {
-                if (remaining_turns > 60) {
-                    command_queue.push_back(me->shipyard->spawn());
-                }
-            }
+            command_queue.push_back(me->shipyard->spawn());
         }
 
         bool end_turn = !game.end_turn(command_queue);

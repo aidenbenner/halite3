@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <map>
 
 namespace hlt {
     /**
@@ -37,7 +38,10 @@ namespace hlt {
         extern int INSPIRED_MOVE_COST_RATIO;
 
         extern bool DROPOFFS_ENABLED;
+
         extern bool IS_DEBUG;
+
+        extern std::map<int, int> SPAWN_STOP;
     }
 }
 

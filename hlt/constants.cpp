@@ -20,6 +20,14 @@ namespace hlt {
         int INSPIRED_EXTRACT_RATIO;
         double INSPIRED_BONUS_MULTIPLIER;
         int INSPIRED_MOVE_COST_RATIO;
+
+        std::map<int, int> SPAWN_STOP = {
+                {32, 170},
+                {40, 200},
+                {48, 240},
+                {56, 260},
+                {64, 280},
+        };
     }
 }
 
