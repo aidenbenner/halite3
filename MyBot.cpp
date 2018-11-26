@@ -505,8 +505,10 @@ int main(int argc, char* argv[]) {
         log::log("Starting resolve phase");
 
         map<Ship*, Direction> next_commands;
-        set<Ship*> visited;
         for (size_t k = 0; k<orders.size(); k++) {
+            if (k > 10 * orders.size()) {
+                break;
+            }
             auto order = orders[k];
             auto ship = orders[k].ship;
             if (assigned.count(ship)) continue;
@@ -549,8 +551,9 @@ int main(int argc, char* argv[]) {
                     if (!game_map->checkSet(1, ship->position) && game_map->at(ship->position)->halite > 0) {
                         move = Direction::STILL;
                     } else {
+                        int r = rand();
                         for (int i = 0; i < 4; i++) {
-                            auto dir = ALL_CARDINALS[i];
+                            auto dir = ALL_CARDINALS[(i + r) % 4];
                             pos = ship->position.directional_offset(dir);
                             pos = game_map->normalize(pos);
                             enemy_collision = collision && game_map->is_in_range_of_enemy(pos, me->id) && dist_from_base > 1;
@@ -573,12 +576,9 @@ int main(int argc, char* argv[]) {
             auto pos = game_map->normalize(ship->position.directional_offset(selected_move));
             if (is_forced_collision) {
                 Ship *relax_ship = game_map->getSet(1, pos);
-                if (!visited.count(relax_ship)) {
-                    if (relax_ship != nullptr) {
-                        visited.insert(ship);
-                        orders.push_back(
-                                Order{5, GATHERING, vector<Direction>(1, Direction::STILL), relax_ship, pos});
-                    }
+                if (relax_ship != nullptr) {
+                    orders.push_back(
+                            Order{5, GATHERING, vector<Direction>(1, Direction::STILL), relax_ship, pos});
                 }
             }
 
