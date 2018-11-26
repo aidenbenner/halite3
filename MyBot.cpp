@@ -506,7 +506,7 @@ int main(int argc, char* argv[]) {
 
         map<Ship*, Direction> next_commands;
         for (size_t k = 0; k<orders.size(); k++) {
-            if (k > 10 * orders.size()) {
+            if (k > 3 * me->ships.size()) {
                 break;
             }
             auto order = orders[k];
@@ -551,9 +551,9 @@ int main(int argc, char* argv[]) {
                     if (!game_map->checkSet(1, ship->position) && game_map->at(ship->position)->halite > 0) {
                         move = Direction::STILL;
                     } else {
-                        int r = rand();
+                        // int r = rand();
                         for (int i = 0; i < 4; i++) {
-                            auto dir = ALL_CARDINALS[(i + r) % 4];
+                            auto dir = ALL_CARDINALS[(i) % 4];
                             pos = ship->position.directional_offset(dir);
                             pos = game_map->normalize(pos);
                             enemy_collision = collision && game_map->is_in_range_of_enemy(pos, me->id) && dist_from_base > 1;
@@ -565,7 +565,7 @@ int main(int argc, char* argv[]) {
                                 is_forced_collision = false;
                                 break;
                             }
-                            move = Direction::STILL;
+                            move = dir;
                         }
                     }
                 }

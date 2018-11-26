@@ -588,7 +588,7 @@ public:
                     }
                 }
             }
-            if (turns_to <= 10) {
+            if (turns_to <= 4) {
                 if (is_inspired(dest, pid)) {
                     halite *= 3;
                 }
