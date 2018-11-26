@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
 
     bool save_for_drop = false;
-    game.ready("adbv43");
+    game.ready("adbv46");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     // Timers
@@ -357,6 +357,11 @@ int main(int argc, char* argv[]) {
         log::log("Start gathering");
 
         // Gather w/ cost heuristic
+        int claim_thresh = 800;
+        if (!is_1v1) {
+            // not for 4p
+            claim_thresh = 9999999;
+        }
         for (auto s : me->ships) {
             shared_ptr<Ship> ship = s.second;
             if (assigned.count(ship.get())) continue;
@@ -388,7 +393,9 @@ int main(int argc, char* argv[]) {
                         if (game_map->at(dest)->halite >= game_map->get_mine_threshold()) {
                             // Always wait
                             // These are our next targets
-                            claimed.insert(dest);
+                            if (game_map->at(dest)->halite < claim_thresh)  {
+                                claimed.insert(dest);
+                            }
                             added.insert(ship->id);
                             gather_orders.push_back(Order{5, GATHERING, vector<Direction>(1, Direction::STILL), ship.get(), dest});
                             ordersMap.erase(ship->id);
@@ -415,7 +422,10 @@ int main(int argc, char* argv[]) {
                 options = game_map->minCostOptions(greedy_bfs[cost.s->position].parent, cost.s->position, mdest);
 
                 added.insert(cost.s->id);
-                claimed.insert(mdest);
+                if (game_map->at(mdest)->halite < claim_thresh)  {
+                    claimed.insert(mdest);
+                }
+                // claimed.insert(mdest);
 
                 gather_orders.push_back(Order{10, GATHERING, options, cost.s, mdest});
                 ordersMap.erase(cost.s->id);
@@ -517,7 +527,9 @@ int main(int argc, char* argv[]) {
         if (me->halite >= save_to &&
             !game_map->checkSet(1, shipyard_pos) && should_spawn)
         {
-            command_queue.push_back(me->shipyard->spawn());
+            if (remaining_turns > 60) {
+                command_queue.push_back(me->shipyard->spawn());
+            }
         }
 
         bool end_turn = !game.end_turn(command_queue);

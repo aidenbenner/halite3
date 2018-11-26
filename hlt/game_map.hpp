@@ -172,10 +172,11 @@ public:
                         continue;
                     }
 
+                    /*
                     if (p != source && at(p)->is_occupied()) {
                         visited.insert(p);
                         continue;
-                    }
+                    }*/
 
                     visited.insert(p);
 
@@ -569,14 +570,22 @@ public:
             int turns_back = calculate_distance(dest, shipyard);
             double turns = turns_to + turns_back;
 
-            if (turns_to <= 1) {
-                if (at(dest)->occupied_by_not(pid) && is_1v1) {
-                    if (s->halite + 200 < at(dest)->ship->halite) {
-                        halite += at(dest)->ship->halite;
+            if (!is_1v1) {
+                turns_to = sqrt(turns_to);
+                turns_back = sqrt(turns_back);
+            }
+
+            if (turns_to <= 3) {
+                // should try and collide
+                if (s->halite <= 500) {
+                    if (at(dest)->occupied_by_not(pid) && is_1v1) {
+                        if (s->halite + 200 < at(dest)->ship->halite) {
+                            halite += at(dest)->ship->halite;
+                        }
                     }
                 }
             }
-            if (turns_to <= 4) {
+            if (turns_to <= 7) {
                 if (is_inspired(dest, pid)) {
                     halite *= 3;
                 }
