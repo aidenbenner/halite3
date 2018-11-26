@@ -44,7 +44,7 @@ struct ShipPos {
     }
 };
 
-const bool COLLIDE_IN_1v1 = false;
+const bool COLLIDE_IN_1v1 = true;
 
 map<Position, Position> closestDropMp;
 Position closest_dropoff(Position pos, Game *g) {
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
 
     bool save_for_drop = false;
-    game.ready("adbv46");
+    game.ready("adbv47");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     // Timers
@@ -376,11 +376,6 @@ int main(int argc, char* argv[]) {
             vector<Direction> options;
             VVI& dist = ship_to_dist[ship->position].dist;
 
-            // options = game_map->hc_plan_gather_path(ship->halite, ship->position);
-            // gather_orders.push_back(Order{10, GATHERING, options, ship.get(), ship->position});
-            // added.insert(ship->id);
-            // ordersMap.erase(ship->id);
-
             for (int i = 0; i<game_map->width; i++) for (int k = 0; k<game_map->width; k++) {
                     auto dest = Position(i, k);
                     auto drop = closest_dropoff(dest, &game);
@@ -433,6 +428,76 @@ int main(int argc, char* argv[]) {
             cost_itr++;
         }
 
+        Timer optimizeTimer = Timer{"Optimize Timer"};
+        optimizeTimer.start();
+        /*
+        double time_thresh = 1.8;
+        if (gather_orders.size() > 1) while (turnTimer.elapsed() < time_thresh) {
+                // swap 2 random orders
+                // log::log(turnTimer.tostring());
+                int gsize = gather_orders.size();
+                for (int i = 0; i<gsize; i++) {
+                    for (int k = i+1; k<gsize; k++) {
+                        int order_1 = i;
+                        int order_2 = k;
+
+                        // log::log(order_1);
+                        if (order_1 == order_2) continue;
+
+                        Order& o1 = gather_orders[order_1];
+                        Order& o2 = gather_orders[order_2];
+
+                        auto shipPos1 = ShipPos{o1.ship->id, o1.planned_dest};
+                        auto shipPos2 = ShipPos{o2.ship->id, o2.planned_dest};
+
+                        auto swapped1 = ShipPos{o1.ship->id, o2.planned_dest};
+                        auto swapped2 = ShipPos{o2.ship->id, o1.planned_dest};
+
+                        double startCost = costMp[shipPos1] + costMp[shipPos2];
+                        double newCost = costMp[swapped1] + costMp[swapped2];
+
+                        int x = game_map->calculate_distance(o1.ship->position, o1.planned_dest);
+                        int y = game_map->calculate_distance(o2.ship->position, o2.planned_dest);
+                        startCost = x * x + y * y;
+                        x = game_map->calculate_distance(o1.ship->position, o2.planned_dest);
+                        y = game_map->calculate_distance(o2.ship->position, o1.planned_dest);
+                        newCost = x * x + y * y;
+
+                        if (newCost < startCost) {
+                            // swap the orders
+                            o1.next_dirs = game_map->minCostOptions(greedy_bfs[o1.ship->position].parent, o1.ship->position, o2.planned_dest);
+                            o2.next_dirs = game_map->minCostOptions(greedy_bfs[o2.ship->position].parent, o2.ship->position, o1.planned_dest);
+                            auto tmp = o1.planned_dest;
+                            o1.planned_dest = o2.planned_dest;
+                            o2.planned_dest = tmp;
+                            log::log("Cost gain of ", newCost, startCost, o1.ship->id, o2.ship->id);
+                        }
+                    }
+                }
+
+                                int order_1 = rand() % (int)gather_orders.size();
+                int order_2 = rand() % (int)gather_orders.size();
+                // log::log(order_1);
+                if (order_1 == order_2) continue;
+                Order& o1 = gather_orders[order_1];
+                Order& o2 = gather_orders[order_2];
+                auto shipPos1 = ShipPos{o1.ship->id, o1.planned_dest};
+                auto shipPos2 = ShipPos{o2.ship->id, o2.planned_dest};
+                auto swapped1 = ShipPos{o1.ship->id, o2.planned_dest};
+                auto swapped2 = ShipPos{o2.ship->id, o1.planned_dest};
+                double startCost = costMp[shipPos1] + costMp[shipPos2];
+                double newCost = costMp[swapped1] + costMp[swapped2];
+                if (newCost < startCost) {
+                    // swap the orders
+                    o1.next_dirs = game_map->get_unsafe_moves(o1.ship->position, o2.planned_dest);
+                    o2.next_dirs = game_map->get_unsafe_moves(o2.ship->position, o1.planned_dest);
+                    auto tmp = o1.planned_dest;
+                    o1.planned_dest = o2.planned_dest;
+                    o2.planned_dest = tmp;
+                    log::log("Cost gain of ", newCost, startCost);
+                }
+            }
+        */
         VC<Order> orders;
         orders = gather_orders;
         for (auto s : ordersMap) {
@@ -442,8 +507,11 @@ int main(int argc, char* argv[]) {
         sort(orders.begin(), orders.end());
 
         log::log("Starting resolve phase");
-        for (const auto& order : orders) {
-            auto ship = order.ship;
+
+        map<Ship*, Direction> next_commands;
+        for (size_t k = 0; k<orders.size(); k++) {
+            auto order = orders[k];
+            auto ship = orders[k].ship;
             if (assigned.count(ship)) continue;
             vector<Direction> options = order.next_dirs;
             ShipState state = stateMp[ship->id];
@@ -454,6 +522,8 @@ int main(int argc, char* argv[]) {
                 assert(false);
                 options.push_back(Direction::STILL);
             }
+
+            bool is_forced_collision = false;
             for (auto move : options) {
                 auto pos = ship->position;
                 pos = game_map->normalize(pos.directional_offset(move));
@@ -471,6 +541,7 @@ int main(int argc, char* argv[]) {
                 }
 
                 if ((game_map->checkSet(1, pos) || enemy_collision) && !super_ignore) {
+                    is_forced_collision = true;
                     // try next option
                     ship->log("detected incoming collision ");
                     if ((size_t)i < options.size() - 1) {
@@ -491,6 +562,7 @@ int main(int argc, char* argv[]) {
                             }
                             if (!game_map->checkSet(1, pos) && !enemy_collision) {
                                 move = dir;
+                                is_forced_collision = false;
                                 break;
                             }
                             move = Direction::STILL;
@@ -502,8 +574,21 @@ int main(int argc, char* argv[]) {
             }
 
             auto pos = game_map->normalize(ship->position.directional_offset(selected_move));
-            game_map->addSet(1, pos);
-            command_queue.push_back(ship->move(selected_move));
+            if (is_forced_collision) {
+                Ship *relax_ship = game_map->getSet(1, pos);
+                if (relax_ship != nullptr) {
+                    orders.push_back(
+                            Order{5, GATHERING, vector<Direction>(1, Direction::STILL), relax_ship, pos});
+                }
+            }
+
+            game_map->addSet(1, pos, ship);
+            next_commands[ship] = selected_move;
+        }
+
+        for (auto ship : next_commands) {
+            if (assigned.count(ship.first)) continue;
+            command_queue.push_back(ship.first->move(next_commands[ship.first]));
         }
 
         // Ship spawning + logging.

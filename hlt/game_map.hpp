@@ -32,7 +32,6 @@ public:
     struct TimePos {
         int turn;
         Position p;
-
         friend bool operator<(const TimePos& a, const TimePos& b) {
             if (a.turn ==  b.turn) {
                 return a.p < b.p;
@@ -53,14 +52,18 @@ public:
         std::map<Position, set<int>> hal_mp;
 
         // set_route contains the next turn state.
-        std::set<TimePos> set_route;
+        std::map<TimePos, Ship*> set_route;
         bool checkSet(int future_turns, Position p) {
             return set_route.count(TimePos{future_turns, p});
         }
 
-        void addSet(int future_turns, Position p) {
-            set_route.insert(TimePos{future_turns, p});
+        void addSet(int future_turns, Position p, Ship *s = nullptr) {
+            set_route[TimePos{future_turns, p}] = s;
             addPlanned(1, p);
+        }
+
+        Ship* getSet(int turns, Position p) {
+            return set_route[TimePos{turns, p}];
         }
 
         bool checkIfPlanned(int future_turns, Position p) {
@@ -69,7 +72,7 @@ public:
 
         void clearPlanned() {
             planned_route.clear();
-            planned_route = set_route;
+            //planned_route = set_route;
         }
 
         void addPlanned(int future_turns, VC<Position> p) {
@@ -571,8 +574,8 @@ public:
             double turns = turns_to + turns_back;
 
             if (!is_1v1) {
-                turns_to = sqrt(turns_to);
-                turns_back = sqrt(turns_back);
+                turns_to = turns_to / 6;
+                turns_back = turns_back / 6;
             }
 
             if (turns_to <= 3) {
@@ -585,7 +588,7 @@ public:
                     }
                 }
             }
-            if (turns_to <= 7) {
+            if (turns_to <= 10) {
                 if (is_inspired(dest, pid)) {
                     halite *= 3;
                 }
