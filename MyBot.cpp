@@ -44,7 +44,7 @@ struct ShipPos {
     }
 };
 
-const bool COLLIDE_IN_1v1 = true;
+const bool COLLIDE_IN_1v1 = false;
 
 map<Position, Position> closestDropMp;
 Position closest_dropoff(Position pos, Game *g) {
@@ -357,11 +357,7 @@ int main(int argc, char* argv[]) {
         log::log("Start gathering");
 
         // Gather w/ cost heuristic
-        int claim_thresh = 800;
-        if (!is_1v1) {
-            // not for 4p
-            claim_thresh = 9999999;
-        }
+        int claim_thresh = 9999999;
         for (auto s : me->ships) {
             shared_ptr<Ship> ship = s.second;
             if (assigned.count(ship.get())) continue;
@@ -509,6 +505,7 @@ int main(int argc, char* argv[]) {
         log::log("Starting resolve phase");
 
         map<Ship*, Direction> next_commands;
+        set<Ship*> visited;
         for (size_t k = 0; k<orders.size(); k++) {
             auto order = orders[k];
             auto ship = orders[k].ship;
@@ -576,9 +573,12 @@ int main(int argc, char* argv[]) {
             auto pos = game_map->normalize(ship->position.directional_offset(selected_move));
             if (is_forced_collision) {
                 Ship *relax_ship = game_map->getSet(1, pos);
-                if (relax_ship != nullptr) {
-                    orders.push_back(
-                            Order{5, GATHERING, vector<Direction>(1, Direction::STILL), relax_ship, pos});
+                if (!visited.count(relax_ship)) {
+                    if (relax_ship != nullptr) {
+                        visited.insert(ship);
+                        orders.push_back(
+                                Order{5, GATHERING, vector<Direction>(1, Direction::STILL), relax_ship, pos});
+                    }
                 }
             }
 
