@@ -539,6 +539,15 @@ public:
             return false;
         }
 
+        Ship* enemy_in_range(Position p, PlayerId pl) {
+            if (at(p)->occupied_by_not(pl)) return at(p)->ship.get();
+            for (int i = 0; i<4; i++) {
+                auto po = p.directional_offset(ALL_CARDINALS[i]);
+                if (at(po)->occupied_by_not(pl)) return at(po)->ship.get();
+            }
+            return nullptr;
+        }
+
         std::vector<int> hal_dist;
         int get_halite_percentile(double percentile) {
             int out = hal_dist[percentile * hal_dist.size()];
