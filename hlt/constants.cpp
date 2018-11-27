@@ -22,8 +22,8 @@ namespace hlt {
         int INSPIRED_MOVE_COST_RATIO;
 
         std::map<int, int> SPAWN_STOP = {
-                {32, 170},
-                {40, 200},
+                {32, 130},
+                {40, 220},
                 {48, 240},
                 {56, 260},
                 {64, 280},
