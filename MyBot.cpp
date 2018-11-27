@@ -2,6 +2,7 @@
 #include "hlt/constants.hpp"
 #include "hlt/log.hpp"
 #include "hlt/utils.hpp"
+#include "hlt/hungarian.hpp"
 
 #include <random>
 #include <string>
@@ -245,7 +246,7 @@ int main(int argc, char* argv[]) {
                     stateMp[id] = RETURNING;
                 }
             }
-            if (ship->halite > 400) {
+            if (ship->halite > 800) {
                 Ship *enemy_ship = game_map->enemy_in_range(ship->position, me->id);
                 if (enemy_ship != nullptr) {
                     if (enemy_ship->halite < ship->halite) {
@@ -337,7 +338,7 @@ int main(int argc, char* argv[]) {
             VVP &pars = ship_to_dist[ship->position].parent;
             options = game_map->minCostOptions(pars, ship->position, mdest);
 
-            if (state == RETURNING) {
+            if (state == RETURNING ) {
                 int hal_on_square = game_map->at(ship->position)->halite;
                 if (hal_on_square >= game_map->get_mine_threshold()) {
                     if (hal_on_square * 0.25 + ship->halite < 1000) {
@@ -366,10 +367,12 @@ int main(int argc, char* argv[]) {
 
         // Gather w/ cost heuristic
         int claim_thresh = 9999999;
+
+        VC<VC<double>> costMatrix;
+        map<int, Ship*> asnMp;
         for (auto s : me->ships) {
             shared_ptr<Ship> ship = s.second;
             if (assigned.count(ship.get())) continue;
-            log::log("Ship is exploring", ship->id);
 
             EntityId id = ship->id;
             ShipState state = stateMp[id];
@@ -377,10 +380,38 @@ int main(int argc, char* argv[]) {
                 continue;
             }
 
+            auto dest = ship->position;
+            if (game_map->at(dest)->halite >= game_map->get_mine_threshold()) {
+                // Always wait
+                // These are our next targets
+                if (game_map->at(dest)->halite < claim_thresh) {
+                    //claimed.insert(dest);
+                }
+                added.insert(ship->id);
+                gather_orders.push_back(Order{5, GATHERING, vector<Direction>(1, Direction::STILL), ship.get(), dest});
+                ordersMap.erase(ship->id);
+                log::log("Ship ", ship->id, " staying at ", dest);
+            }
+        }
+
+
+        for (auto s : me->ships) {
+            shared_ptr<Ship> ship = s.second;
+            if (assigned.count(ship.get())) continue;
+            if (added.count(ship->id)) continue;
+
+            EntityId id = ship->id;
+            ShipState state = stateMp[id];
+            if (state != GATHERING) {
+                continue;
+            }
+
+            asnMp[costMatrix.size()] = ship.get();
+            costMatrix.push_back(vector<double>(game_map->width * game_map->width, 1e9));
             vector<Direction> options;
             VVI &dist = ship_to_dist[ship->position].dist;
 
-            for (int i = 0; i < game_map->width; i++)
+            for (int i = 0; i < game_map->width; i++){
                 for (int k = 0; k < game_map->width; k++) {
                     auto dest = Position(i, k);
                     auto drop = closest_dropoff(dest, &game);
@@ -389,27 +420,54 @@ int main(int argc, char* argv[]) {
                     int cost_from = dropoff_dist[dest.x][dest.y];
 
                     double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1);
-                    if (ship->position == dest) {
-                        if (game_map->at(dest)->halite >= game_map->get_mine_threshold()) {
-                            // Always wait
-                            // These are our next targets
-                            if (game_map->at(dest)->halite < claim_thresh) {
-                                claimed.insert(dest);
-                            }
-                            added.insert(ship->id);
-                            gather_orders.push_back(
-                                    Order{5, GATHERING, vector<Direction>(1, Direction::STILL), ship.get(), dest});
-                            ordersMap.erase(ship->id);
-                            log::log("Ship ", ship->id, " staying at ", dest);
-                        }
+                    if (i == k) {
+                        c = 10;
                     }
+                    else {
+                        c = 1000;
+                    }
+                    /*
+                    if (claimed.count(dest)) {
+                        c += 99999;
+                    }*/
+                    costMatrix.back()[i * game_map->width + k] = c + 10000;
                     if (!costs.count(c)) costs[c] = VC<Cost>();
 
                     auto sp = ShipPos{ship->id, dest};
                     costMp[sp] = c;
                     costs[c].PB(Cost{dest, ship.get()});
                 }
+            }
         }
+
+        /*
+        vector<int> assgn(64 * 64, 0);
+        if (costMatrix.size() != 0) {
+            log::log(costMatrix.size(), costMatrix[0].size());
+            HungarianAlgorithm ha;
+            ha.Solve(costMatrix, assgn);
+            for (auto i : asnMp) {
+                log::log("Ship ", i.second->id);
+                auto ship = i.second;
+                int x = assgn[i.first] / game_map->width;
+                int y = assgn[i.first] % game_map->width;
+                log::log(assgn[i.first] / game_map->width);
+                log::log(assgn[i.first] % game_map->width);
+
+                auto mdest = Position{x,y};
+                vector<Direction> options;
+
+                options = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, mdest);
+
+                added.insert(ship->id);
+                if (game_map->at(mdest)->halite < claim_thresh) {
+                    claimed.insert(mdest);
+                }
+
+                gather_orders.push_back(Order{10, GATHERING, options, ship, mdest});
+                ordersMap.erase(ship->id);
+            }
+        }*/
 
         auto cost_itr = costs.begin();
         while (cost_itr != costs.end()) {
@@ -421,12 +479,6 @@ int main(int argc, char* argv[]) {
                 else {
                     if (claimed.count(cost.dest) > 1) continue;
                 }
-                /*
-                else if (cost.s->halite + game_map->at(cost.dest)->halite > 1000) {
-                    if (claimed.count(cost.dest) > 2) continue;
-                }
-                else {
-                }*/
 
                 auto mdest = cost.dest;
                 vector<Direction> options;
@@ -445,12 +497,14 @@ int main(int argc, char* argv[]) {
             cost_itr++;
         }
 
+
         Timer optimizeTimer = Timer{"Optimize Timer"};
         optimizeTimer.start();
         // double time_thresh = 0.05;
             // while (turnTimer.elapsed() < time_thresh) {
                 // swap 2 random orders
-                // log::log(turnTimer.tostring());
+                // log::log(turnTimer.tostring())
+                /*
         int gsize = gather_orders.size();
         for (int z = 0; z<10; z++) {
             for (int i = 0; i < gsize && gsize > 1; i++) {
@@ -493,7 +547,7 @@ int main(int argc, char* argv[]) {
                     }
                 }
             }
-        }
+        }*/
 
         //    }
         VC<Order> orders;

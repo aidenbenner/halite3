@@ -582,10 +582,10 @@ public:
             int turns_back = calculate_distance(dest, shipyard);
             double turns = turns_to + turns_back;
 
-            if (!is_1v1) {
+            /*if (!is_1v1) {
                 turns_to = turns_to / 6;
                 turns_back = turns_back / 6;
-            }
+            }*/
 
             if (turns_to <= 3) {
                 // should try and collide
@@ -603,7 +603,7 @@ public:
                 }
             }
             if (halite < get_mine_threshold()) {
-                return 10000;
+                return 1200;
             }
 
             //to_cost = 0;
