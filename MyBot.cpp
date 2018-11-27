@@ -416,6 +416,14 @@ int main(int argc, char* argv[]) {
             for (auto cost : cost_itr->second) {
                 if (added.count(cost.s->id)) continue;
                 if (game_map->at(cost.dest)->halite > 1000) {
+                    if (is_1v1) {
+                        if (claimed.count(cost.dest) > 3) continue;
+                    }
+                    else {
+                        if (claimed.count(cost.dest) > 1) continue;
+                    }
+                }
+                else if (is_1v1 && game_map->at(cost.dest)->halite > 700) {
                     if (claimed.count(cost.dest) > 2) continue;
                 }
                 else {
@@ -451,6 +459,7 @@ int main(int argc, char* argv[]) {
             // while (turnTimer.elapsed() < time_thresh) {
                 // swap 2 random orders
                 // log::log(turnTimer.tostring());
+        /*
         int gsize = gather_orders.size();
         for (int z = 0; z<10; z++) {
             for (int i = 0; i < gsize && gsize > 1; i++) {
@@ -475,10 +484,18 @@ int main(int argc, char* argv[]) {
 
                     int x = game_map->calculate_distance(o1.ship->position, o1.planned_dest);
                     int y = game_map->calculate_distance(o2.ship->position, o2.planned_dest);
-                    startCost = x * x + y * y;
-                    x = game_map->calculate_distance(o1.ship->position, o2.planned_dest);
-                    y = game_map->calculate_distance(o2.ship->position, o1.planned_dest);
-                    newCost = x * x + y * y;
+                    newCost = 0;
+                    startCost = 0;
+                    if (x == 0 || y == 0) {
+                        //startCost = x * x + y * y;
+                        x = game_map->calculate_distance(o1.ship->position, o2.planned_dest);
+                        y = game_map->calculate_distance(o2.ship->position, o1.planned_dest);
+                        //newCost = x * x + y * y;
+                        if (x == 1 || y == 1) {
+                            newCost = 0;
+                            startCost = 10;
+                        }
+                    }
 
                     if (newCost < startCost) {
                         // swap the orders
@@ -493,7 +510,7 @@ int main(int argc, char* argv[]) {
                     }
                 }
             }
-        }
+        }*/
 
         //    }
         VC<Order> orders;
