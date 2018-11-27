@@ -25,7 +25,7 @@ seed = random.randint(9900000,100000000)
 seed -= seed % 10000
 print('Running with seed %s' % seed)
 
-os.system('./halite --replay-directory replays/ -vvv "./MyBot %s" "./bots/benchmark %s"' % (bot_arg_str, bot_arg_str))
+os.system('./halite --replay-directory replays/ -vvv --width 56 --height 56 "./MyBot %s" "./bots/benchmark %s"' % (bot_arg_str, bot_arg_str))
 #os.system('./halite --replay-directory replays/ -vvv --width 40 --height 40 "./MyBot %s" "./MyBot %s" "./bots/benchmark %s" "./bots/benchmark %s"'
 #        % (bot_arg_str, bot_arg_str, bot_arg_str, bot_arg_str))
 os.system("ps aux | grep -i './MyBot\\|./bots/' | awk '{print $2}' | xargs sudo kill -9")

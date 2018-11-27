@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
 
     bool save_for_drop = false;
-    game.ready("adbv52");
+    game.ready("adbv54");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     // Timers
@@ -415,15 +415,16 @@ int main(int argc, char* argv[]) {
         while (cost_itr != costs.end()) {
             for (auto cost : cost_itr->second) {
                 if (added.count(cost.s->id)) continue;
+                log::log(cost_itr->first);
                 if (game_map->at(cost.dest)->halite > 1000) {
-                    if (is_1v1) {
+                    if (is_1v1 && game_map->width <= 48) {
                         if (claimed.count(cost.dest) >= 4) continue;
                     }
                     else {
-                        if (claimed.count(cost.dest) >= 1) continue;
+                        if (claimed.count(cost.dest) >= 2) continue;
                     }
                 }
-                else if (is_1v1 && game_map->at(cost.dest)->halite > 800) {
+                else if (is_1v1 && game_map->width <= 48 && game_map->at(cost.dest)->halite > 800) {
                     if (claimed.count(cost.dest) >= 2) continue;
                 }
                 else {
@@ -439,15 +440,19 @@ int main(int argc, char* argv[]) {
                 auto mdest = cost.dest;
                 vector<Direction> options;
 
-                options = game_map->minCostOptions(greedy_bfs[cost.s->position].parent, cost.s->position, mdest);
-
                 added.insert(cost.s->id);
                 if (game_map->at(mdest)->halite < claim_thresh) {
                     claimed.insert(mdest);
                 }
-                // claimed.insert(mdest);
 
-                gather_orders.push_back(Order{10, GATHERING, options, cost.s, mdest});
+                if (cost.s->position == mdest) {
+                    gather_orders.push_back(
+                            Order{5, GATHERING, vector<Direction>(1, Direction::STILL), cost.s, mdest});
+                }
+                else {
+                    options = game_map->minCostOptions(greedy_bfs[cost.s->position].parent, cost.s->position, mdest);
+                    gather_orders.push_back(Order{10, GATHERING, options, cost.s, mdest});
+                }
                 ordersMap.erase(cost.s->id);
             }
             cost_itr++;

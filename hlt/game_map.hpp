@@ -587,16 +587,17 @@ public:
                 turns_back = turns_back / 6;
             }
 
-            if (turns_to <= 3) {
+            if (turns_to <= 3 && turns_back <= width / 3) {
                 // should try and collide
                 if (s->halite <= 500) {
                     if (at(dest)->occupied_by_not(pid) && is_1v1) {
                         if (s->halite + 200 < at(dest)->ship->halite) {
-                            halite += at(dest)->ship->halite;
+                            halite += 10 * at(dest)->ship->halite;
                         }
                     }
                 }
             }
+
             if (turns_to <= 4) {
                 if (is_inspired(dest, pid)) {
                     halite *= 3;
@@ -605,6 +606,13 @@ public:
             if (halite < get_mine_threshold()) {
                 return 10000;
             }
+            else {
+                /*
+                if (s->position == dest) {
+                    return -1000;
+                }*/
+            }
+
 
             //to_cost = 0;
             //int avg_hal = avg_around_point(dest, 1);
