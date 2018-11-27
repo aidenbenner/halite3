@@ -417,17 +417,17 @@ int main(int argc, char* argv[]) {
                 if (added.count(cost.s->id)) continue;
                 if (game_map->at(cost.dest)->halite > 1000) {
                     if (is_1v1) {
-                        if (claimed.count(cost.dest) > 3) continue;
+                        if (claimed.count(cost.dest) >= 3) continue;
                     }
                     else {
-                        if (claimed.count(cost.dest) > 1) continue;
+                        if (claimed.count(cost.dest) >= 1) continue;
                     }
                 }
                 else if (is_1v1 && game_map->at(cost.dest)->halite > 700) {
-                    if (claimed.count(cost.dest) > 2) continue;
+                    if (claimed.count(cost.dest) >= 2) continue;
                 }
                 else {
-                    if (claimed.count(cost.dest) > 1) continue;
+                    if (claimed.count(cost.dest) >= 1) continue;
                 }
                 /*
                 else if (cost.s->halite + game_map->at(cost.dest)->halite > 1000) {
