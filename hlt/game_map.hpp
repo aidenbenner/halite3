@@ -148,7 +148,7 @@ public:
         }
 
 
-        BFSR BFS(Position source, bool greedy=false) {
+        BFSR BFS(Position source, bool greedy=false, int starting_hal=0) {
             // dfs out of source to the entire map
             set<Position> visited;
 
@@ -158,8 +158,10 @@ public:
 
             vector<vector<int>> dist(width,vector<int>(height,def));
             vector<vector<Position>> parent(width,vector<Position>(height, {-1, -1}));
+            vector<vector<int>> turns(width, vector<int>(height, 1e9));
 
             dist[source.x][source.y] = 0;
+            turns[source.x][source.y] = 1;
 
             vector<Position> frontier;
             vector<Position> next;
@@ -191,13 +193,17 @@ public:
                         auto f = normalize(p.directional_offset(d));
                         int c = at(f)->cost() + dist[f.x][f.y];
                         if (greedy) {
+                            int t;
                             if (at(f)->halite < get_mine_threshold()) {
-                                c = dist[f.x][f.y];
+                                c = dist[f.x][f.y]; //max(1,(int)( + (0.1 * at(f)->halite)));
+                                t = turns[f.x][f.y];
                             }
                             else {
-                                c = at(f)->halite + dist[f.x][f.y];
+                                c = 0.25 * at(f)->halite + dist[f.x][f.y];
+                                t = turns[f.x][f.y] + 1;
                             }
-                            if (c >= dist[p.x][p.y]) {
+                            if (c / (double)t >= dist[p.x][p.y] / (double)turns[p.x][p.y]) {
+                                turns[p.x][p.y] = t;
                                 dist[p.x][p.y] = c;
                                 parent[p.x][p.y] = f;
                             }
@@ -211,7 +217,7 @@ public:
                     }
                 }
             }
-            return BFSR{dist, parent};
+            return BFSR{dist, parent, turns};
         }
 
         vector<Position> traceBackPath(VVP parents, Position start, Position dest) {
@@ -572,7 +578,7 @@ public:
             return sum;
         }
 
-        inline double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1) {
+        inline double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1, int extra_turns) {
             if (dest == shipyard) return 10000000;
 
             int halite = at(dest)->halite;
@@ -608,9 +614,9 @@ public:
 
             //to_cost = 0;
             //int avg_hal = avg_around_point(dest, 1);
-            to_cost = 0;
-            home_cost = 0;
-            double out = (halite) / (double)turns;
+            //to_cost = 0;
+            //home_cost = 0;
+            double out = (halite + to_cost) / (turns + extra_turns);
             return -out;
         }
 

@@ -19,5 +19,6 @@ namespace hlt {
     struct BFSR {
         VVI dist;
         VVP parent;
+        VVI turns;
     };
 }
