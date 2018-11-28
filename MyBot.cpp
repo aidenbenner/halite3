@@ -471,56 +471,31 @@ int main(int argc, char* argv[]) {
         log::log("hit3");
 
         for (size_t i = 0; i<gather_orders.size(); i++) {
-            for (size_t k = i+1; k<gather_orders.size(); k++) {
+            for (size_t k = 0; k<gather_orders.size(); k++) {
+                if (k == i) continue;
                 Order& order_1 = gather_orders[i];
                 Order& order_2 = gather_orders[k];
 
                 if (order_2.planned_dest == order_2.ship->position) {
                     auto next = order_1.next_dirs;
-                    for (auto d : next) {
-                        if (order_1.ship->position.directional_offset(d) == order_2.ship->position) {
-                            // swap orders
-                            auto tmp = order_1.planned_dest;
-                            order_1.planned_dest = order_2.planned_dest;
-                            order_2.planned_dest = tmp;
+                    auto d = next[0];
+                    if (order_1.ship->position.directional_offset(d) == order_2.ship->position) {
+                        // swap orders
+                        auto tmp = order_1.planned_dest;
+                        order_1.planned_dest = order_2.planned_dest;
+                        order_2.planned_dest = tmp;
 
-                            order_1.priority = 10;
-                            order_2.priority = 10;
+                        order_1.priority = 10;
+                        order_2.priority = 10;
+                        log::log("Swapping");
 
-                            auto ship = order_1.ship;
-                            order_1.next_dirs = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, order_1.planned_dest);
-                            ship = order_2.ship;
-                            order_2.next_dirs = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, order_2.planned_dest);
-                            break;
-                        }
+                        auto ship = order_1.ship;
+                        order_1.next_dirs = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, order_1.planned_dest);
+                        ship = order_2.ship;
+                        order_2.next_dirs = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, order_2.planned_dest);
+                        break;
                     }
                 }
-                else {
-                    order_1 = gather_orders[k];
-                    order_2 = gather_orders[i];
-
-                    if (order_2.planned_dest == order_2.ship->position) {
-                        auto next = order_1.next_dirs;
-                        for (auto d : next) {
-                            if (order_1.ship->position.directional_offset(d) == order_2.ship->position) {
-                                // swap orders
-                                auto tmp = order_1.planned_dest;
-                                order_1.planned_dest = order_2.planned_dest;
-                                order_2.planned_dest = tmp;
-
-                                order_1.priority = 10;
-                                order_2.priority = 10;
-
-                                auto ship = order_1.ship;
-                                order_1.next_dirs = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, order_1.planned_dest);
-                                ship = order_2.ship;
-                                order_2.next_dirs = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, order_2.planned_dest);
-                                break;
-                            }
-                        }
-                    }
-                }
-
             }
         }
 
