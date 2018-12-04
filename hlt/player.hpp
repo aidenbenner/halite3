@@ -13,8 +13,8 @@ namespace hlt {
         PlayerId id;
         std::shared_ptr<Shipyard> shipyard;
         Halite halite;
-        std::unordered_map<EntityId, std::shared_ptr<Ship>> ships;
-        std::unordered_map<EntityId, std::shared_ptr<Dropoff>> dropoffs;
+        std::map<EntityId, std::shared_ptr<Ship>> ships;
+        std::map<EntityId, std::shared_ptr<Dropoff>> dropoffs;
 
         Player(PlayerId player_id, int shipyard_x, int shipyard_y) :
             id(player_id),

@@ -21,4 +21,17 @@ namespace hlt {
         VVP parent;
         VVI turns;
     };
+
+    struct ShipPos {
+        int id;
+        Position pos;
+
+        bool operator<(const ShipPos &b) const {
+            if (id == b.id) {
+                return pos < b.pos;
+            }
+            return id < b.id;
+        }
+    };
+
 }

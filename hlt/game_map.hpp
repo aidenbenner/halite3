@@ -143,6 +143,10 @@ public:
                     return d;
                 }
             }
+
+            log::log("Assertion failed");
+            log::log(a);
+            log::log(b);
             assert(false);
             return Direction::STILL;
         }
@@ -585,8 +589,9 @@ public:
 
             // if (at(dest)->occupied_by_not(pid)) return 100000000;
             int turns_to = calculate_distance(s->position, dest);
+            if (turns_to > 0 && at(dest)->is_occupied(pid)) return 1000000;
             int turns_back = calculate_distance(dest, shipyard);
-            double turns = turns_to + turns_back;
+            double turns = max(1, turns_to + turns_back);
 
             /*if (!is_1v1) {
                 turns_to = turns_to / 6;
@@ -603,21 +608,21 @@ public:
                     }
                 }
             }
-            if (turns_to <= 4) {
+            if (turns_to <= 15) {
                 if (is_inspired(dest, pid)) {
                     halite *= 3;
                 }
             }
+
             if (halite < get_mine_threshold()) {
-                return 1200;
+                return 4200;
             }
 
-            //to_cost = 0;
+            to_cost = 0;
             //int avg_hal = avg_around_point(dest, 1);
-            //to_cost = 0;
             //home_cost = 0;
-            double out = (halite + to_cost) / (turns + extra_turns);
-            return -out;
+            double out = (halite + to_cost) / (turns);
+            return -out * 100;
         }
 
         map<Position, bool> inspiredMemo;
@@ -637,6 +642,15 @@ public:
                 }
             }
             return inspiredMemo[p] = constants::INSPIRATION_SHIP_COUNT >= 2;
+        }
+
+        vector<Position> get_surrounding_pos(Position p, bool inclusive=true) {
+            vector<Position> out;
+            if (inclusive) out.push_back(p);
+            for (auto a : ALL_CARDINALS) {
+                out.push_back(normalize(p.directional_offset(a)));
+            }
+            return out;
         }
 
         int sum_around_point(Position p, int r) {
