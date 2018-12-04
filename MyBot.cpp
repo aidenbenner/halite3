@@ -200,12 +200,12 @@ int main(int argc, char* argv[]) {
     bool is_1v1 = game.players.size() == 2;
     bool save_for_drop = false;
     int last_ship_count = 0;
-    bool walk_in_one = !is_1v1;
+    bool avoid_collide_4p = !is_1v1;
 
     map<EntityId, int> hal_mined_per_ship;
     map<EntityId, ShipState> stateMp;
 
-    game.ready("adbv56");
+    game.ready("adbv57");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     // Timers
@@ -223,7 +223,7 @@ int main(int argc, char* argv[]) {
             opponent = game.players[1];
 
         if ((int)last_ship_count > (int)me->ships.size()) {
-            walk_in_one = true;
+            avoid_collide_4p = true;
         }
         last_ship_count = me->ships.size();
 
@@ -571,10 +571,12 @@ int main(int argc, char* argv[]) {
                         ordersMap[ship->id].add_dir_priority(d, 1e9);
                     }
                 }
-                if (walk_in_one && is_in_range_of_enemy[p]) {
+                if (!is_1v1 && is_in_range_of_enemy[p]) {
                     int dist_to_drop = game_map->calculate_distance(p, closestDropMp[p]);
-                    if (dist_to_drop > 1) {
-                        ordersMap[ship->id].add_dir_priority(d, 1e9);
+                    if (avoid_collide_4p || game_map->at(p)->occupied_by_not(me->id)) {
+                        if (dist_to_drop > 1) {
+                            ordersMap[ship->id].add_dir_priority(d, 1e9);
+                        }
                     }
                 }
                 directionCostMatrix[i][ind] = ordersMap[ship->id].nextCosts[d];
@@ -636,6 +638,17 @@ int main(int argc, char* argv[]) {
         }
         else {
             should_spawn = game.turn_number <= constants::SPAWN_STOP[game_map->width];
+        }
+
+        if (!is_1v1) {
+            int num_ships = 0;
+            for (auto p : game.players) {
+                if (p->id == me->id) {
+                    continue;
+                }
+                num_ships += p->ships.size();
+            }
+            ship_target = num_ships / 3;
         }
 
         if (me->halite >= save_to &&

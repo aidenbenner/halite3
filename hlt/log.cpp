@@ -52,7 +52,7 @@ void hlt::log::open(int bot_id) {
 
 
 void hlt::log::log(const std::string& message) {
-    if (!constants::IS_DEBUG) {
+    if (constants::IS_DEBUG) {
         if (has_opened) {
             log_file << message << std::endl;
         } else {
@@ -66,7 +66,7 @@ void hlt::log::log(const std::string& message) {
 }
 
 void hlt::log::flog(const std::string& message) {
-    if (!constants::IS_DEBUG) {
+    if (constants::IS_DEBUG) {
         if (has_opened) {
             flog_file << message << std::endl;
         } else {
@@ -80,7 +80,7 @@ void hlt::log::flog(const std::string& message) {
 }
 
 void hlt::log::flog(Log f) {
-    if (!constants::IS_DEBUG) {
+    if (constants::IS_DEBUG) {
         flog(f.get_json() + ",");
     }
 }

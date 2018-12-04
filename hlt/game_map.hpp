@@ -608,25 +608,54 @@ public:
                     }
                 }
             }
-            if (turns_to <= 15) {
-                if (is_inspired(dest, pid)) {
-                    halite *= 3;
+
+            if (is_1v1) {
+                if (turns_to <= 7) {
+                    if (is_inspired(dest, pid)) {
+                        halite *= 3;
+                    }
                 }
             }
 
             if (halite < get_mine_threshold()) {
                 return 4200;
             }
-
             to_cost = 0;
             //int avg_hal = avg_around_point(dest, 1);
             //home_cost = 0;
             double out = (halite + to_cost) / (turns);
+            if (is_1v1 && turns_to < 7) {
+                out -= num_inspired(dest, pid) / turns;
+            }
             return -out * 100;
         }
 
+        // count number of inspired enemies
+        map<Position, int> inspiredCountMemo;
+        int num_inspired(Position p, PlayerId id) {
+            if (!constants::INSPIRATION_ENABLED) return 0;
+            if (inspiredCountMemo.count(p)) return inspiredCountMemo[p];
+            int radius = constants::INSPIRATION_RADIUS * 2;
+
+            int count = 0;
+            for (int i = 0; i<radius * 2; i++) {
+                for (int k = 0; k<radius * 2; k++) {
+                    auto c = Position {p.x - radius + i, p.y - radius + k};
+                    if (this->calculate_distance(c, p) <= constants::INSPIRATION_RADIUS) {
+                        if (at(c)->occupied_by_not(id)) {
+                            if (is_inspired(c, id, true)) {
+                                count += 3 * 0.25 * at(c)->halite;
+                            }
+                        }
+                    }
+                }
+            }
+            return inspiredCountMemo[p] = count;
+        }
+
+
         map<Position, bool> inspiredMemo;
-        bool is_inspired(Position p, PlayerId id) {
+        bool is_inspired(Position p, PlayerId id, bool enemy=false) {
             if (!constants::INSPIRATION_ENABLED) return false;
             if (inspiredMemo.count(p)) return inspiredMemo[p];
             int radius = constants::INSPIRATION_RADIUS * 2;
@@ -635,8 +664,15 @@ public:
                 for (int k = 0; k<radius * 2; k++) {
                     auto c = Position {p.x - radius + i, p.y - radius + k};
                     if (this->calculate_distance(c, p) <= constants::INSPIRATION_RADIUS) {
-                        if (at(c)->occupied_by_not(id)) {
-                            enemies++;
+                        if (enemy) {
+                            if (at(c)->is_occupied(id)) {
+                                enemies++;
+                            }
+                        }
+                        else {
+                            if (at(c)->occupied_by_not(id)) {
+                                enemies++;
+                            }
                         }
                     }
                 }

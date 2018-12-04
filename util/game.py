@@ -23,7 +23,6 @@ if no_drops:
 if no_inspr:
     bot_args.append('--noinspr')
 
-
 width = random.choice([32,48,56,64])
 if small:
     width = 32
@@ -37,7 +36,6 @@ print('bot args %s', bot_arg_str)
 seed = random.randint(9900000,100000000)
 seed -= seed % 10000
 print('Running with seed %s' % seed)
-
 
 if p4:
     os.system('./halite --replay-directory replays/ -vvv --width %s --height %s "./MyBot %s" "./MyBot %s" "./bots/benchmark %s" "./bots/benchmark %s"' % (width, width, bot_arg_str, bot_arg_str, bot_arg_str, bot_arg_str))

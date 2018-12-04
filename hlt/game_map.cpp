@@ -19,6 +19,7 @@ void hlt::GameMap::_update() {
     planned_route.clear();
     set_route.clear();
     inspiredMemo.clear();
+    inspiredCountMemo.clear();
 
     int update_count;
     hlt::get_sstream() >> update_count;
