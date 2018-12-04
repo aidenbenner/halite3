@@ -637,10 +637,6 @@ int main(int argc, char* argv[]) {
             should_spawn = remaining_turns > 220 || (int) me->ships.size() < ship_target;
         }
         else {
-            should_spawn = game.turn_number <= constants::SPAWN_STOP[game_map->width];
-        }
-
-        if (!is_1v1) {
             int num_ships = 0;
             for (auto p : game.players) {
                 if (p->id == me->id) {
@@ -648,7 +644,8 @@ int main(int argc, char* argv[]) {
                 }
                 num_ships += p->ships.size();
             }
-            ship_target = num_ships / 3;
+            ship_target = max(10, num_ships / 3);
+            should_spawn = remaining_turns > 300 || (int) me->ships.size() < ship_target;
         }
 
         if (me->halite >= save_to &&
