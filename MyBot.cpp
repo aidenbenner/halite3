@@ -205,7 +205,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, int> hal_mined_per_ship;
     map<EntityId, ShipState> stateMp;
 
-    game.ready("adbv57");
+    game.ready("adbv59");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
 
     // Timers
@@ -563,6 +563,8 @@ int main(int argc, char* argv[]) {
         int i = 0;
         for (auto s : me->ships) {
             auto ship = s.second;
+
+            auto state = stateMp[ship->id];
             for (auto d : ALL_DIRS) {
                 Position p = game_map->normalize(ship->position.directional_offset(d));
                 int ind = bijectToPos[p];
@@ -571,9 +573,9 @@ int main(int argc, char* argv[]) {
                         ordersMap[ship->id].add_dir_priority(d, 1e9);
                     }
                 }
-                if (!is_1v1 && is_in_range_of_enemy[p]) {
+                if ((!is_1v1 || state == RETURNING) && is_in_range_of_enemy[p]) {
                     int dist_to_drop = game_map->calculate_distance(p, closestDropMp[p]);
-                    if (avoid_collide_4p || game_map->at(p)->occupied_by_not(me->id)) {
+                    if (state == RETURNING || avoid_collide_4p || game_map->at(p)->occupied_by_not(me->id)) {
                         if (dist_to_drop > 1) {
                             ordersMap[ship->id].add_dir_priority(d, 1e9);
                         }

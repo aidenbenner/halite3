@@ -616,6 +616,11 @@ public:
                     }
                 }
             }
+            else {
+                if (is_inspired(dest, pid)) {
+                    halite *= 3;
+                }
+            }
 
             if (halite < get_mine_threshold()) {
                 return 4200;
@@ -624,8 +629,9 @@ public:
             //int avg_hal = avg_around_point(dest, 1);
             //home_cost = 0;
             double out = (halite + to_cost) / (turns);
+
             if (is_1v1 && turns_to < 7) {
-                out -= num_inspired(dest, pid) / turns;
+                out -= 0 * num_inspired(dest, pid) / turns;
             }
             return -out * 100;
         }
