@@ -22,6 +22,18 @@ namespace hlt {
         VVI turns;
     };
 
+    // COLLISION TERMS
+    // avoid - never walk within range 1 of a ship that can walk into you
+    // tolerate - never walk directly into
+    // ignore - DGAF
+    // SMART - only risk collision if you less halite
+    enum EnemyResponse {
+        AVOID,
+        TOLERATE,
+        SMART,
+        IGNORE
+    };
+
     struct ShipPos {
         int id;
         Position pos;

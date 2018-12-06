@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 
+using namespace std;
 typedef vector<vector<int>> VVI;
 
 namespace hlt {

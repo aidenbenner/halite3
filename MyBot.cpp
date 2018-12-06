@@ -3,8 +3,10 @@
 #include "hlt/log.hpp"
 #include "hlt/utils.hpp"
 #include "hlt/hungarian.hpp"
+#include "hlt/game_map.hpp"
 
 #include <random>
+#include <vector>
 #include <string>
 #include <unordered_set>
 #include <map>
@@ -14,9 +16,16 @@ using namespace std;
 using namespace hlt;
 using namespace constants;
 
+// TODO
+// - EVADING
+// - Don't take bad collisions
+// - If enemy ship has less halite avoid
+// - Mark enemy ships that can't move
+
 bool constants::INSPIRATION_ENABLED = true;
 bool constants::DROPOFFS_ENABLED = true;
 bool constants::IS_DEBUG = false;
+int constants::PID = 0;
 
 typedef VC<Position> Path;
 
@@ -200,17 +209,20 @@ int main(int argc, char* argv[]) {
     bool is_1v1 = game.players.size() == 2;
     bool save_for_drop = false;
     int last_ship_count = 0;
+
     bool avoid_collide_4p = !is_1v1;
+    if (avoid_collide_4p) {
+       avoid_collide_4p = !is_1v1;
+    }
 
     map<EntityId, int> hal_mined_per_ship;
     map<EntityId, ShipState> stateMp;
 
-    game.ready("adbv59");
+    game.ready("adbv61");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
+    constants::PID = game.my_id;
 
-    // Timers
     Timer turnTimer;
-    map<EntityId, Path> lastPath;
     for (;;) {
         game.update_frame();
         turnTimer.start();
@@ -324,14 +336,13 @@ int main(int argc, char* argv[]) {
         ship_to_dist.clear();
         for (auto s : me->ships) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
-            greedy_bfs[s.second->position] = game_map->BFS(s.second->position, true);
+            greedy_bfs[s.second->position] = ship_to_dist[s.second->position];// game_map->BFS(s.second->position, true);
         }
         for (auto s : me->dropoffs) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
         }
+
         log::log("After BFS", turnTimer.elapsed());
-
-
         set<EntityId> added;
         for (const auto &ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
@@ -370,6 +381,7 @@ int main(int argc, char* argv[]) {
 
             ordersMap[ship->id] = o;
         }
+        log::log("After costs filled ", turnTimer.elapsed());
 
         // Fill ship costs
         struct Cost {
@@ -461,6 +473,7 @@ int main(int argc, char* argv[]) {
 
                 vector<Direction> options;
                 options = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, mdest);
+                auto bestdir = game_map->get_best_random_walk(ship->halite, ship->position, mdest);
 
                 added.insert(ship->id);
                 claimed.insert(mdest);
@@ -468,8 +481,9 @@ int main(int argc, char* argv[]) {
                 Order o{10, GATHERING, ship, mdest};
                 o.setAllCosts(1e8);
 
+                log::log(bestdir);
                 if (game_map->at(ship->position)->halite >= game_map->get_mine_threshold()) {
-                    o.add_dir_priority(Direction::STILL, 1);
+                   o.add_dir_priority(Direction::STILL, 1);
                 }
                 else {
                     o.add_dir_priority(Direction::STILL, 1e4);
@@ -479,39 +493,11 @@ int main(int argc, char* argv[]) {
                     o.add_dir_priority(d, 1e2);
                 }
 
+                o.add_dir_priority(bestdir, 1);
+
                 ordersMap[ship->id] = o;
             }
         }
-
-        /*
-        for (size_t i = 0; i<gather_orders.size(); i++) {
-            for (size_t k = 0; k<gather_orders.size(); k++) {
-                if (k == i) continue;
-                Order& order_1 = gather_orders[i];
-                Order& order_2 = gather_orders[k];
-
-                if (order_2.planned_dest == order_2.ship->position) {
-                    auto next = order_1.next_dirs;
-                    auto d = next[0];
-                    if (order_1.ship->position.directional_offset(d) == order_2.ship->position) {
-                        // swap orders
-                        auto tmp = order_1.planned_dest;
-                        order_1.planned_dest = order_2.planned_dest;
-                        order_2.planned_dest = tmp;
-
-                        order_1.priority = 10;
-                        order_2.priority = 10;
-                        log::log("Swapping");
-
-                        auto ship = order_1.ship;
-                        order_1.next_dirs = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, order_1.planned_dest);
-                        ship = order_2.ship;
-                        order_2.next_dirs = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, order_2.planned_dest);
-                        break;
-                    }
-                }
-            }
-        }*/
 
         for (const auto &ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
@@ -527,6 +513,7 @@ int main(int argc, char* argv[]) {
                 assigned.insert(ship.get());
             }
         }
+        log::log("After Assignment ", turnTimer.elapsed());
 
         VC<Order> orders;
         for (auto s : ordersMap) {
@@ -543,8 +530,6 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // TODO if ships == 0
-        // Cost matrix for
         map<Position, int> bijectToPos;
         map<int, Position> indToPos;
         int ind = 0;
@@ -563,16 +548,28 @@ int main(int argc, char* argv[]) {
         int i = 0;
         for (auto s : me->ships) {
             auto ship = s.second;
-
             auto state = stateMp[ship->id];
+
+            auto response = EnemyResponse::SMART;
+            if (state == RETURNING) {
+                response = AVOID;
+            }
+            for (auto d : ship->GetBannedDirs(game_map.get(), response)) {
+                ordersMap[ship->id].add_dir_priority(d, 1e9);
+            }
+
             for (auto d : ALL_DIRS) {
                 Position p = game_map->normalize(ship->position.directional_offset(d));
                 int ind = bijectToPos[p];
+
                 if (closestDropMp[p] == p) {
                     if (d == Direction::STILL) {
                         ordersMap[ship->id].add_dir_priority(d, 1e9);
                     }
                 }
+
+                // Collision
+                /*
                 if ((!is_1v1 || state == RETURNING) && is_in_range_of_enemy[p]) {
                     int dist_to_drop = game_map->calculate_distance(p, closestDropMp[p]);
                     if (state == RETURNING || avoid_collide_4p || game_map->at(p)->occupied_by_not(me->id)) {
@@ -580,11 +577,12 @@ int main(int argc, char* argv[]) {
                             ordersMap[ship->id].add_dir_priority(d, 1e9);
                         }
                     }
-                }
+                }*/
                 directionCostMatrix[i][ind] = ordersMap[ship->id].nextCosts[d];
             }
             i++;
         }
+        log::log("After Dir Assignment ", turnTimer.elapsed());
 
         log::log("hit");
         vector<int> dirShipMapping(me->ships.size());

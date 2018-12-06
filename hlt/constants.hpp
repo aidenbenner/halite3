@@ -41,6 +41,8 @@ namespace hlt {
 
         extern bool IS_DEBUG;
 
+        extern int PID;
+
         extern std::map<int, int> SPAWN_STOP;
     }
 }

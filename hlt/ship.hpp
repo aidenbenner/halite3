@@ -6,7 +6,9 @@
 
 #include <memory>
 
+using namespace std;
 namespace hlt {
+    class GameMap;
     struct Ship : Entity {
         Halite halite;
 
@@ -34,6 +36,10 @@ namespace hlt {
         void log(std::string s) {
             log::log("Ship #" + std::to_string(id) + ": " + s);
         }
+
+        vector<Direction> GetBannedDirs(GameMap *game_map, EnemyResponse type);
+
+        vector<Direction> GetAllowedDirs(GameMap *game_map, EnemyResponse type);
 
         static std::shared_ptr<Ship> _generate(PlayerId player_id);
     };
