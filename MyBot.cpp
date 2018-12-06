@@ -101,6 +101,7 @@ Position getBestDropoff(Game &g) {
                         use = false;
                 }
 
+
                 if (!use)
                     continue;
 
@@ -210,15 +211,13 @@ int main(int argc, char* argv[]) {
     bool save_for_drop = false;
     int last_ship_count = 0;
 
-    bool avoid_collide_4p = !is_1v1;
-    if (avoid_collide_4p) {
-       avoid_collide_4p = !is_1v1;
-    }
+    bool has_collided = false;
+    bool built_ship_last = false;
 
     map<EntityId, int> hal_mined_per_ship;
     map<EntityId, ShipState> stateMp;
 
-    game.ready("adbv61");
+    game.ready("adbv62");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
 
@@ -234,8 +233,11 @@ int main(int argc, char* argv[]) {
         if (opponent->id == me->id)
             opponent = game.players[1];
 
+        if (built_ship_last) {
+            last_ship_count += 1;
+        }
         if ((int)last_ship_count > (int)me->ships.size()) {
-            avoid_collide_4p = true;
+            has_collided = true;
         }
         last_ship_count = me->ships.size();
 
@@ -551,8 +553,13 @@ int main(int argc, char* argv[]) {
             auto state = stateMp[ship->id];
 
             auto response = EnemyResponse::SMART;
-            if (state == RETURNING || !is_1v1) {
+            if (state == RETURNING) {
                 response = AVOID;
+            }
+            if (!is_1v1) {
+                if (has_collided) {
+                    response = AVOID;
+                }
             }
             for (auto d : ship->GetBannedDirs(game_map.get(), response)) {
                 ordersMap[ship->id].add_dir_priority(d, 1e9);
@@ -648,13 +655,16 @@ int main(int argc, char* argv[]) {
             should_spawn = remaining_turns > 300 || (int) me->ships.size() < ship_target;
         }
 
+        built_ship_last = false;
         if (me->halite >= save_to &&
             !game_map->checkSet(1, shipyard_pos) && should_spawn)
         {
             if (remaining_turns > 60) {
                 command_queue.push_back(me->shipyard->spawn());
+                built_ship_last = true;
             }
         }
+
 
         bool end_turn = !game.end_turn(command_queue);
         log::log(turnTimer.tostring());
