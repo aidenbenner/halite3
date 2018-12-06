@@ -551,7 +551,7 @@ int main(int argc, char* argv[]) {
             auto state = stateMp[ship->id];
 
             auto response = EnemyResponse::SMART;
-            if (state == RETURNING) {
+            if (state == RETURNING || !is_1v1) {
                 response = AVOID;
             }
             for (auto d : ship->GetBannedDirs(game_map.get(), response)) {
