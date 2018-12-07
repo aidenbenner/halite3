@@ -338,7 +338,7 @@ int main(int argc, char* argv[]) {
         ship_to_dist.clear();
         for (auto s : me->ships) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
-            greedy_bfs[s.second->position] = ship_to_dist[s.second->position];// game_map->BFS(s.second->position, true);
+            greedy_bfs[s.second->position] = ship_to_dist[s.second->position]; // game_map->BFS(s.second->position, true);
         }
         for (auto s : me->dropoffs) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
@@ -371,14 +371,16 @@ int main(int argc, char* argv[]) {
                         continue;
                     }
                 }
-                options = game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
+                // options = game_map->minCostOptions(pars)// game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
             }
             Order o{0, RETURNING, ship.get(), mdest};
             o.setAllCosts(1e5);
             o.add_dir_priority(Direction::STILL, 1e4);
 
+            int cost = 10;
             for (auto c : options) {
-                o.add_dir_priority(c, 1e2);
+                o.add_dir_priority(c, cost);
+                cost *= 100;
             }
 
             ordersMap[ship->id] = o;
@@ -485,16 +487,18 @@ int main(int argc, char* argv[]) {
 
                 log::log(bestdir);
                 if (game_map->at(ship->position)->halite >= game_map->get_mine_threshold()) {
-                   o.add_dir_priority(Direction::STILL, 1);
+                // o.add_dir_priority(Direction::STILL, 1);
                 }
                 else {
-                    o.add_dir_priority(Direction::STILL, 1e4);
+                // o.add_dir_priority(Direction::STILL, 1e4);
                 }
 
+                int cost = 10;
                 for (auto d : options) {
-                    o.add_dir_priority(d, 1e2);
+                    o.add_dir_priority(d, 1e5);
+                    cost *= 100;
                 }
-
+                // o.add_dir_priority(Direction::STILL, 1e5);
                 o.add_dir_priority(bestdir, 1);
 
                 ordersMap[ship->id] = o;
