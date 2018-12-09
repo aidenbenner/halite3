@@ -2,6 +2,7 @@
 #include "input.hpp"
 #include "direction.hpp"
 #include "game_map.hpp"
+#include "game.hpp"
 
 using namespace hlt;
 
@@ -16,8 +17,8 @@ std::shared_ptr<hlt::Ship> hlt::Ship::_generate(hlt::PlayerId player_id) {
 
 }
 
-vector<Direction> Ship::GetBannedDirs(GameMap *game_map, EnemyResponse type) {
-    auto dirs = GetAllowedDirs(game_map, type);
+vector<Direction> Ship::GetBannedDirs(GameMap *game_map, EnemyResponse type, Game& g) {
+    auto dirs = GetAllowedDirs(game_map, type, g);
 
     vector<Direction> out;
     for (auto dir : ALL_DIRS) {
@@ -35,7 +36,7 @@ vector<Direction> Ship::GetBannedDirs(GameMap *game_map, EnemyResponse type) {
     return out;
 }
 
-vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type) {
+vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Game &g) {
     // Check if we can move
     if (halite < game_map->at(this)->cost()) {
         return vector<Direction>(1, Direction::STILL);
@@ -61,10 +62,14 @@ vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type) {
                     out.push_back(d);
                     break;
                 case SMART:
-                    if (halite < 500) {
-                        if (halite < enemy->halite) {
-                            // risk collision
-                            out.push_back(d);
+                    Ship *s = game_map->get_closest_ship(position, g.players);
+
+                    if (s->owner == constants::PID) {
+                        if (halite < 500) {
+                            if (halite < enemy->halite) {
+                                // risk collision
+                                out.push_back(d);
+                           }
                         }
                     }
                     break;

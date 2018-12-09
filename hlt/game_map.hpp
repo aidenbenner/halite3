@@ -58,6 +58,14 @@ namespace hlt {
         // set_route contains the next turn state.
         std::map<TimePos, Ship*> set_route;
 
+        std::map<Position, Position> closestDropMp;
+
+        Ship* get_closest_ship(Position pos, vector<shared_ptr<Player>> &p);
+
+        Position closest_dropoff(Position pos, Game *g);
+
+        Ship* get_closest_ship(Position pos, Player &p);
+
         bool checkSet(int future_turns, Position p);
 
         void addSet(int future_turns, Position p, Ship *s = nullptr);
@@ -112,7 +120,7 @@ namespace hlt {
 
         vector<Direction> plan_gather_path(int starting_halite, Position start, Position dest);
 
-        Direction get_best_random_walk(int starting_halite, Position start, Position dest);
+        RandomWalkResult get_best_random_walk(int starting_halite, Position start, Position dest);
 
         Direction get_random_dir_towards(Position start, Position end);
 

@@ -44,80 +44,6 @@ enum OrderType {
 
 const bool COLLIDE_IN_1v1 = false;
 
-map<Position, Position> closestDropMp;
-Position closest_dropoff(Position pos, Game *g) {
-    if (closestDropMp.count(pos)) return closestDropMp[pos];
-    auto p = g->me->shipyard->position;
-    int m = g->game_map->calculate_distance(pos,p);
-
-    for (auto d : g->me->dropoffs) {
-        auto currp = d.second->position;
-        int currd = g->game_map->calculate_distance(pos,currp);
-
-        if (currd < m) {
-            m = currd;
-            p = currp;
-        }
-    }
-    return closestDropMp[pos] = p;
-}
-
-Ship* getClosestShip(Position pos, Player &p, GameMap &g) {
-    int dist = 10000000;
-    Ship* soj = nullptr;
-    for (auto s : p.ships) {
-        int curr =  g.calculate_distance(pos, s.second->position);
-        if (curr < dist) {
-            dist = curr;
-            soj = s.second.get();
-        }
-    }
-    return soj;
-}
-
-const int DROPOFF_THRESH = 8141;
-Position getBestDropoff(Game &g) {
-    Position out = Position(-1, -1);
-    int maxz = -1;
-    for (int i = 0; i<g.game_map->width; i++) {
-        for (int k = 0; k<g.game_map->height; k++) {
-            auto curr = Position(i, k);
-            int c = g.game_map->sum_around_point(curr, 5);
-            if (c < DROPOFF_THRESH) continue;
-            int dist = g.game_map->calculate_distance(curr, closest_dropoff(curr, &g));
-            if (dist > 21) {
-                Ship* close = getClosestShip(curr, *g.me.get(), *g.game_map.get());
-                auto ship_pos = g.me->shipyard->position;
-                int dist_to_yard = g.game_map->calculate_distance(ship_pos, curr);
-                if (close != nullptr) {
-                    ship_pos = close->position;
-                }
-                int d_to_ship = g.game_map->calculate_distance(ship_pos, curr);
-
-                bool use = true;
-                for (auto other_player : g.players) {
-                    int dist_to_other = g.game_map->calculate_distance(curr, other_player->shipyard->position);
-                    if (dist_to_yard > dist_to_other + 5)
-                        use = false;
-                }
-
-
-                if (!use)
-                    continue;
-
-
-               if ((close == nullptr || d_to_ship < 30)) {
-                    if (c > maxz) {
-                        maxz = c;
-                        out = curr;
-                    }
-                }
-            }
-        }
-    }
-    return out;
-}
-
 struct Order {
     int priority;
     int type;
@@ -178,6 +104,7 @@ int main(int argc, char* argv[]) {
     }
 
     mt19937 rng(rng_seed);
+    bool one_ship = false;
 
     for (int i = 0; i < argc; i++) {
         log::log(argv[i]);
@@ -192,6 +119,10 @@ int main(int argc, char* argv[]) {
         else if (std::string(argv[i]) == "--debug") {
             log::log("Debug mode enabled");
             constants::IS_DEBUG = true;
+        }
+        else if (std::string(argv[i]) == "--oneship") {
+            log::log("Debug mode enabled");
+            one_ship = true;
         }
         else {
 
@@ -216,16 +147,18 @@ int main(int argc, char* argv[]) {
 
     map<EntityId, int> hal_mined_per_ship;
     map<EntityId, ShipState> stateMp;
+    map<EntityId, int> stuckMap;
 
-    game.ready("adbv62");
+    game.ready("adbv64");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
 
     Timer turnTimer;
+    // General stuck -> Repeat same turn 3 times, make a random move.
+
     for (;;) {
         game.update_frame();
         turnTimer.start();
-        closestDropMp.clear();
 
         shared_ptr<Player> me = game.me;
         shared_ptr<Player> opponent = game.players[0];
@@ -269,8 +202,8 @@ int main(int argc, char* argv[]) {
             if (ship->halite == 0) {
                 stateMp[id] = GATHERING;
             }
-            if (remaining_turns < game_map->calculate_distance(ship->position, closest_dropoff(ship->position, &game))
-                                  + game_map->width / 6 + 0.3 * me->ships.size()) {
+            if (remaining_turns < game_map->calculate_distance(ship->position, game_map->closest_dropoff(ship->position, &game))
+                                  + 0.3 * me->ships.size()) {
                 stateMp[id] = SUPER_RETURN;
             }
         }
@@ -286,11 +219,12 @@ int main(int argc, char* argv[]) {
 
             Ship *best_dropoff = nullptr;
             float curr_avg_halite = 0;
+
             for (const auto &ship_iterator : me->ships) {
                 shared_ptr<Ship> ship = ship_iterator.second;
                 if (assigned.count(ship.get())) continue;
 
-                int dist = game_map->calculate_distance(ship->position, closest_dropoff(ship->position, &game));
+                int dist = game_map->calculate_distance(ship->position, game_map->closest_dropoff(ship->position, &game));
                 float avg_halite = game_map->avg_around_point(ship->position, 5);
 
                 if (game_map->at(ship)->halite > 4000 - ship->halite) {
@@ -320,7 +254,7 @@ int main(int argc, char* argv[]) {
                     given_order.insert(ship->id);
                     command_queue.push_back(ship->make_dropoff());
                     assigned.insert(ship);
-                    closestDropMp.clear();
+                    game_map->closestDropMp.clear();
                     me->halite -= 4000;
                 } else {
                     auto ship = best_dropoff;
@@ -351,7 +285,7 @@ int main(int argc, char* argv[]) {
             if (assigned.count(ship.get())) continue;
             auto state = stateMp[ship->id];
 
-            auto mdest = closest_dropoff(ship->position, &game);
+            auto mdest = game_map->closest_dropoff(ship->position, &game);
             vector<Direction> options;
             VVP &pars = ship_to_dist[ship->position].parent;
             options = game_map->minCostOptions(pars, ship->position, mdest);
@@ -374,13 +308,13 @@ int main(int argc, char* argv[]) {
                 // options = game_map->minCostOptions(pars)// game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
             }
             Order o{0, RETURNING, ship.get(), mdest};
-            o.setAllCosts(1e5);
+            o.setAllCosts(1e9);
             o.add_dir_priority(Direction::STILL, 1e4);
 
             int cost = 10;
             for (auto c : options) {
                 o.add_dir_priority(c, cost);
-                cost *= 100;
+                cost *= 10;
             }
 
             ordersMap[ship->id] = o;
@@ -423,18 +357,23 @@ int main(int argc, char* argv[]) {
             VVI &dist = greedy_bfs[ship->position].dist;
             VVI &turns = greedy_bfs[ship->position].turns;
 
+            // Take top ships.size() + 1 costs
+            multimap<double, Position> candidate_squares;
+
             for (int i = 0; i < game_map->width; i++){
                 for (int k = 0; k < game_map->width; k++) {
                     auto dest = Position(i, k);
-                    auto drop = closest_dropoff(dest, &game);
+                    auto drop = game_map->closest_dropoff(dest, &game);
                     VVI &dropoff_dist = ship_to_dist[drop].dist;
                     int net_cost_to = dist[dest.x][dest.y];
                     int cost_from = dropoff_dist[dest.x][dest.y];
                     int extra_turns = turns[dest.x][dest.y];
 
                     double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1, extra_turns);
-                    costMatrix.back()[i * game_map->width + k] = c + 1000000;
+                    // costMatrix.back()[i * game_map->width + k] = c + 1000000;
                     if (!costs.count(c)) costs[c] = VC<Cost>();
+
+                    candidate_squares.insert(make_pair(c, dest));
                     /*
                     if (shipn == 0) {
                         stringstream ss;
@@ -451,8 +390,23 @@ int main(int argc, char* argv[]) {
                     costs[c].PB(Cost{dest, ship.get()});
                 }
             }
+
+            size_t count = 0;
+            for (auto square : candidate_squares) {
+                if (count > me->ships.size() + 20) {
+                    break;
+                }
+                auto cost = game_map->get_best_random_walk(ship->halite, ship->position, square.second);
+                int turns_back = game_map->calculate_distance(ship->position, game_map->closest_dropoff(ship->position, &game));
+                double c = cost.cost / (turns_back + cost.turns);
+                costMatrix.back()[game_map->width * square.second.x + square.second.y] = 10000 - 50 * c;
+                log::flog(log::Log{game.turn_number - 1, square.second.x, square.second.y, "cost - " + std::to_string(c), "#DD00DD"});
+                //log::log(cost);
+                count += 1;
+            }
+
             if (shipn == 0) {
-                log::flog(log::Log{game.turn_number - 1, ship->position.x, ship->position.y, "cost - " + std::to_string(ship->id), "#DD00DD"});
+                //log::flog(log::Log{game.turn_number - 1, ship->position.x, ship->position.y, "cost - " + std::to_string(ship->id), "#DD00DD"});
             }
             shipn++;
         }
@@ -477,7 +431,7 @@ int main(int argc, char* argv[]) {
 
                 vector<Direction> options;
                 options = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, mdest);
-                auto bestdir = game_map->get_best_random_walk(ship->halite, ship->position, mdest);
+                auto bestdir = game_map->get_best_random_walk(ship->halite, ship->position, mdest).bestdir;
 
                 added.insert(ship->id);
                 claimed.insert(mdest);
@@ -485,18 +439,18 @@ int main(int argc, char* argv[]) {
                 Order o{10, GATHERING, ship, mdest};
                 o.setAllCosts(1e8);
 
-                log::log(bestdir);
-                if (game_map->at(ship->position)->halite >= game_map->get_mine_threshold()) {
+                // log::log(bestdir);
+                /*if (game_map->at(ship->position)->halite >= game_map->get_mine_threshold()) {
                 // o.add_dir_priority(Direction::STILL, 1);
                 }
                 else {
                 // o.add_dir_priority(Direction::STILL, 1e4);
-                }
+                }*/
 
                 int cost = 10;
                 for (auto d : options) {
-                    o.add_dir_priority(d, 1e5);
-                    cost *= 100;
+                    o.add_dir_priority(d, cost);
+                    cost *= 10;
                 }
                 // o.add_dir_priority(Direction::STILL, 1e5);
                 o.add_dir_priority(bestdir, 1);
@@ -557,38 +511,48 @@ int main(int argc, char* argv[]) {
             auto state = stateMp[ship->id];
 
             auto response = EnemyResponse::SMART;
-            if (state == RETURNING) {
-                response = AVOID;
-            }
             if (!is_1v1) {
                 if (has_collided) {
                     response = AVOID;
                 }
+                else {
+                    response = TOLERATE;
+                }
             }
-            for (auto d : ship->GetBannedDirs(game_map.get(), response)) {
+            else {
+                response = SMART;
+            }
+            if (state == RETURNING) {
+                response = AVOID;
+            }
+            if (game_map->calculate_distance(ship->position, game_map->closest_dropoff(ship->position, &game)) <= 3 || state == SUPER_RETURN) {
+                response = IGNORE;
+            }
+
+            for (auto d : ship->GetBannedDirs(game_map.get(), response, game)) {
                 ordersMap[ship->id].add_dir_priority(d, 1e9);
+            }
+
+
+            auto drop = game_map->closest_dropoff(ship->position, &game);
+            if (game_map->calculate_distance(ship->position, drop) <= 1 && state == SUPER_RETURN) {
+                // Don't include
+                command_queue.push_back(ship->move(game_map->get_unsafe_moves(ship->position, drop)[0]));
+                given_order.insert(ship->id);
+                i++;
+                continue;
             }
 
             for (auto d : ALL_DIRS) {
                 Position p = game_map->normalize(ship->position.directional_offset(d));
                 int ind = bijectToPos[p];
 
-                if (closestDropMp[p] == p) {
+                if (game_map->closest_dropoff(ship->position, &game) == p) {
                     if (d == Direction::STILL) {
                         ordersMap[ship->id].add_dir_priority(d, 1e9);
                     }
                 }
 
-                // Collision
-                /*
-                if ((!is_1v1 || state == RETURNING) && is_in_range_of_enemy[p]) {
-                    int dist_to_drop = game_map->calculate_distance(p, closestDropMp[p]);
-                    if (state == RETURNING || avoid_collide_4p || game_map->at(p)->occupied_by_not(me->id)) {
-                        if (dist_to_drop > 1) {
-                            ordersMap[ship->id].add_dir_priority(d, 1e9);
-                        }
-                    }
-                }*/
                 directionCostMatrix[i][ind] = ordersMap[ship->id].nextCosts[d];
             }
             i++;
@@ -614,10 +578,8 @@ int main(int argc, char* argv[]) {
 
             auto state = stateMp[ship->id];
             if (state == SUPER_RETURN) {
-                auto drop = closestDropMp[ship->position];
+                auto drop = game_map->closest_dropoff(ship->position, &game);
                 if (game_map->calculate_distance(ship->position, drop) <= 1) {
-                    command_queue.push_back(ship->move(game_map->get_unsafe_moves(ship->position, drop)[0]));
-                    i++;
                     continue;
                 }
             }
@@ -645,7 +607,12 @@ int main(int argc, char* argv[]) {
         bool should_spawn;
         if (is_1v1) {
             ship_target = max(10, (int)opponent->ships.size());
-            should_spawn = remaining_turns > 220 || (int) me->ships.size() < ship_target;
+            if (one_ship) {
+                should_spawn = me->ships.size() < 1;
+            }
+            else {
+                should_spawn = remaining_turns > 220 || (int) me->ships.size() < ship_target;
+            }
         }
         else {
             int num_ships = 0;

@@ -10,6 +10,7 @@ args = set(sys.argv)
 debug = '--debug' in args
 no_drops = '--nodrop' in args
 no_inspr =  '--noinspr' in args
+one_ship =  '--oneship' in args
 small =  '--small' in args
 ssmall =  '--ssmall' in args
 medium =  '--medium' in args
@@ -22,6 +23,8 @@ if no_drops:
     bot_args.append('--nodrop')
 if no_inspr:
     bot_args.append('--noinspr')
+if one_ship:
+    bot_args.append('--oneship')
 
 width = random.choice([32,48,56,64])
 if small:

@@ -9,6 +9,7 @@
 using namespace std;
 namespace hlt {
     class GameMap;
+    struct Game;
     struct Ship : Entity {
         Halite halite;
 
@@ -16,6 +17,9 @@ namespace hlt {
             Entity(player_id, ship_id, x, y),
             halite(halite)
         {}
+
+        vector<Direction> GetBannedDirs(GameMap *game_map, EnemyResponse type, Game& g);
+        vector<Direction> GetAllowedDirs(GameMap *game_map, EnemyResponse type, Game &g);
 
         bool is_full() const {
             return halite >= constants::MAX_HALITE;

@@ -34,6 +34,12 @@ namespace hlt {
         IGNORE
     };
 
+    struct RandomWalkResult {
+        Direction bestdir;
+        double cost;
+        int turns;
+    };
+
     struct ShipPos {
         int id;
         Position pos;
