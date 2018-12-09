@@ -34,7 +34,7 @@ Ship* GameMap::get_closest_ship(Position pos, vector<shared_ptr<Player>> &p) {
     Ship* soj = nullptr;
     for (auto player : p) {
         for (auto s : player->ships) {
-            int curr =  calculate_distance(pos, s.second->position);
+            int curr = calculate_distance(pos, s.second->position);
             if (curr < dist) {
                 dist = curr;
                 soj = s.second.get();
@@ -266,6 +266,8 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         int cost = 0;
         int curr_square_hal = at(curr)->halite;
         vector<Position> path;
+
+        bool did_break = false;
         while (dest != curr) {
             path.push_back(curr);
             auto move = get_random_dir_towards(curr, dest);
@@ -288,11 +290,22 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             }
             turns += 1;
             if (curr_halite > 1000) {
+                did_break = true;
                 break;
             }
         }
 
-        double c = (at(dest)->halite * 0.25 + curr_halite - starting_halite - cost) / turns;
+        int dest_halite = at(dest)->halite * 0.25;
+        turns++;
+        if (is_inspired(dest, constants::PID)) {
+            dest_halite *= 3;
+        }
+        if (did_break) {
+            turns--;
+            dest_halite = 0;
+        }
+
+        double c = (dest_halite + curr_halite - starting_halite - cost) / turns;
         //log::log(i, calculate_distance(start, dest), curr_halite, turns, c, first_move);
         if (c > best_cost) {
             best_path = path;
@@ -751,7 +764,7 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
     }
 
     double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1, int extra_turns) {
-        if (dest == shipyard) return 10000000;
+        if (at(dest)->halite == 0 && dest == shipyard) return 10000000;
         if (!is_1v1) {
             if (is_in_range_of_enemy(dest, pid)) {
                 return 100000;
@@ -762,7 +775,7 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
 
         int turns_to = calculate_distance(s->position, dest);
         int turns_back = calculate_distance(dest, shipyard);
-        int turns = max(1, turns_to + turns_back);
+        double turns = fmax(1, turns_to + turns_back);
 
         //if (turns_to > 0 && at(dest)->is_occupied(pid)) return 1000000;
         /*
@@ -879,15 +892,21 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
         return sum;
     }
 
-    float GameMap::avg_around_point(Position p, int r) {
+    float GameMap::avg_around_point(Position p, int r, bool squared) {
         int sum = 0;
         int count = 0;
         for (int i = 0; i<2 * r; i++) {
             for (int k = 0; k< 2 * r; k++) {
                 auto end = Position(p.x - r + i, p.y -r + k);
-                if (calculate_distance(p, end) <= r) {
+                int dist = calculate_distance(p, end);
+                if (dist <= r) {
                     auto z = normalize(end);
-                    sum += at(z)->halite;
+                    if (squared) {
+                        sum += dist * dist * at(z)->halite * at(z)->halite;
+                    }
+                    else {
+                        sum += at(z)->halite;
+                    }
                     count++;
                 }
             }

@@ -161,7 +161,7 @@ namespace hlt {
 
         int sum_around_point(Position p, int r);
 
-        float avg_around_point(Position p, int r);
+        float avg_around_point(Position p, int r, bool squared=false);
 
         void _update();
         static std::unique_ptr<GameMap> _generate();
