@@ -10,6 +10,8 @@ using namespace std;
 namespace hlt {
     class GameMap;
     struct Game;
+
+
     struct Ship : Entity {
         Halite halite;
 
@@ -47,4 +49,50 @@ namespace hlt {
 
         static std::shared_ptr<Ship> _generate(PlayerId player_id);
     };
+
+
+    struct Order {
+        int priority;
+        int type;
+
+        map<Direction, double> nextCosts;
+
+        void add_dir_priority(Direction d, double c) {
+            nextCosts[d] = c;
+        }
+
+        Ship *ship;
+        Position planned_dest;
+
+        bool operator<(const Order& b) {
+            return priority < b.priority;
+        }
+
+        Position post() {
+            return planned_dest;
+        }
+
+        Ship* use() {
+            return ship;
+        }
+
+
+        void setAllCosts(double d) {
+            add_dir_priority(Direction::STILL, d);
+            add_dir_priority(Direction::NORTH, d);
+            add_dir_priority(Direction::SOUTH, d);
+            add_dir_priority(Direction::EAST, d);
+            add_dir_priority(Direction::WEST, d);
+        }
+
+        Order() {}
+
+        Order(int prioritiy, int type, Ship* ship, Position planned_dest) : priority(prioritiy), type(type), ship(ship), planned_dest(planned_dest) {
+            int def = 5;
+            setAllCosts(def);
+        }
+    };
+
+
+
 }

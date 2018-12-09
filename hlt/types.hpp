@@ -38,6 +38,7 @@ namespace hlt {
         Direction bestdir;
         double cost;
         int turns;
+        VC<Position> walk;
     };
 
     struct ShipPos {
@@ -51,5 +52,8 @@ namespace hlt {
             return id < b.id;
         }
     };
+
+
+
 
 }

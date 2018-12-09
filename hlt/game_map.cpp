@@ -163,6 +163,11 @@ struct TimePos {
         for (int i = 0; i<(int)p.size(); i++) {
             planned_route.insert(TimePos{i, p[i]});
         }
+        for (int i = 0; i<(int)p.size() - 1; i++) {
+            if (p[i] == p[i + 1]) {
+                mine_hal(p[i], i);
+            }
+        }
     }
 
     void GameMap::addPlanned(int future_turns, Position p) {
@@ -178,7 +183,7 @@ struct TimePos {
             hal_mp[p] = std::set<int>();
         }
         int uses = distance(hal_mp[p].begin(), hal_mp[p].lower_bound(turn));
-        return at(p)->halite * pow(0.8, uses);
+        return at(p)->halite * pow(0.75, uses);
     }
 
     void GameMap::mine_hal(Position p, int turn) {
@@ -235,15 +240,14 @@ struct TimePos {
         return Direction::STILL;
     }
 
-
-    // TODO cast cap cost function
-
 RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position start, Position dest) {
     Direction best_move = Direction::STILL;
     double best_cost = -1000000;
     int best_turns = 1;
     if (calculate_distance(start,dest) == 0) return {Direction::STILL, (double)at(dest)->halite * 0.25, 1};
-    for (int i = 0; i<10; i++) {
+
+    vector<Position> best_path;
+    for (int i = 0; i<1000; i++) {
         int curr_halite = starting_halite;
         int turns = 1;
 
@@ -252,7 +256,9 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
         int cost = 0;
         int curr_square_hal = at(curr)->halite;
+        vector<Position> path;
         while (dest != curr) {
+            path.push_back(curr);
             auto move = get_random_dir_towards(curr, dest);
             if (curr_halite < curr_square_hal * 0.1 || move == Direction::STILL) {
                 if (is_inspired(curr, constants::PID)) {
@@ -277,16 +283,17 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             }
         }
 
-        double c = (curr_halite - starting_halite) / turns;
+        double c = (at(dest)->halite * 0.25 + curr_halite - starting_halite - cost) / turns;
         //log::log(i, calculate_distance(start, dest), curr_halite, turns, c, first_move);
         if (c > best_cost) {
+            best_path = path;
             best_cost = c;
             best_move = first_move;
             best_turns = turns;
         }
     };
 
-    return {best_move, best_cost, best_turns};
+    return {best_move, best_cost, best_turns, best_path};
 }
 
 Direction GameMap::get_random_dir_towards(Position start, Position end) {
@@ -744,14 +751,9 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
 
         int halite = at(dest)->halite;
 
-        int turns_to = calculate_distance(s->position, dest) / 5;
+        int turns_to = calculate_distance(s->position, dest);
         int turns_back = calculate_distance(dest, shipyard);
         int turns = max(1, turns_to + turns_back);
-
-        if (turns_to == 0) {
-            to_cost = 0;
-            turns = max(1, (int)turns - 1);
-        }
 
         //if (turns_to > 0 && at(dest)->is_occupied(pid)) return 1000000;
         /*
@@ -772,7 +774,7 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
             if (is_1v1 && turns_to < 6) {
                 halite *= 3;
             }
-            else if (!is_1v1 && turns_to < 6) {
+            else if (!is_1v1) {
                 halite *= 3;
             }
         }
@@ -786,7 +788,7 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
         //to_cost = 0;
         //int avg_hal = avg_around_point(dest, 1);
         //home_cost = 0;
-        int c = halite - to_cost - home_cost;
+        int c = halite - to_cost;
         double out = (c) / ((double)turns);
         if (is_1v1) {
             out -= num_inspired(dest, pid) / (double)turns;
