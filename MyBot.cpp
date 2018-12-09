@@ -16,6 +16,12 @@ using namespace std;
 using namespace hlt;
 using namespace constants;
 
+double getTime() {
+    timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec * 1e-6;
+}
+
 // TODO
 // - EVADING
 // - Don't take bad collisions
@@ -104,7 +110,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv66");
+    game.ready("adbv67");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
 
@@ -125,6 +131,7 @@ int main(int argc, char* argv[]) {
         if ((int)last_ship_count > (int)me->ships.size()) {
             has_collided = true;
         }
+        log::log("Has collided ", has_collided);
         last_ship_count = me->ships.size();
 
         int remaining_turns = constants::MAX_TURNS - game.turn_number;
@@ -381,7 +388,8 @@ int main(int argc, char* argv[]) {
 
                 vector<Direction> options;
                 options = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, mdest);
-                auto walk = game_map->get_best_random_walk(ship->halite, ship->position, mdest);
+                double remaining = 1.8 - turnTimer.elapsed();
+                auto walk = game_map->get_best_random_walk(ship->halite, ship->position, mdest, fmax(0.005, remaining / me->ships.size()));
                 // game_map->addPlanned(0, walk.walk);
                 auto bestdir = walk.bestdir;
 

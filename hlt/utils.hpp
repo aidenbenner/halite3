@@ -11,11 +11,7 @@
 
 using namespace std;
 
-double getTime() {
-	timeval tv;
-	gettimeofday(&tv, NULL);
-	return tv.tv_sec + tv.tv_usec * 1e-6;
-}
+double getTime();
 
 struct Timer {
 	double total = 0;

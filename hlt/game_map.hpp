@@ -120,7 +120,7 @@ namespace hlt {
 
         vector<Direction> plan_gather_path(int starting_halite, Position start, Position dest);
 
-        RandomWalkResult get_best_random_walk(int starting_halite, Position start, Position dest);
+        RandomWalkResult get_best_random_walk(int starting_halite, Position start, Position dest, double time_bank = 0);
 
         Direction get_random_dir_towards(Position start, Position end);
 

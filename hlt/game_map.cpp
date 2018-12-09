@@ -1,6 +1,7 @@
 #include "game_map.hpp"
 #include "input.hpp"
 #include "game.hpp"
+#include "utils.hpp"
 #include <memory>
 
 using namespace std;
@@ -240,14 +241,22 @@ struct TimePos {
         return Direction::STILL;
     }
 
-RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position start, Position dest) {
+RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position start, Position dest, double time_bank) {
     Direction best_move = Direction::STILL;
     double best_cost = -1000000;
     int best_turns = 1;
     if (calculate_distance(start,dest) == 0) return {Direction::STILL, (double)at(dest)->halite * 0.25, 1};
 
     vector<Position> best_path;
-    for (int i = 0; i<1000; i++) {
+    Timer timer;
+    timer.start();
+    int itrs = max(2000, calculate_distance(start, dest) * 100);
+    int i = 0;
+    while (i < itrs) {
+        if (time_bank != 0 && timer.elapsed() > time_bank) {
+            break;
+        }
+        i++;
         int curr_halite = starting_halite;
         int turns = 1;
 
@@ -291,7 +300,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             best_move = first_move;
             best_turns = turns;
         }
-    };
+    }
 
     return {best_move, best_cost, best_turns, best_path};
 }
@@ -299,7 +308,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 Direction GameMap::get_random_dir_towards(Position start, Position end) {
     auto moves = get_unsafe_moves(start, end);
     moves.push_back(Direction::STILL);
-    // if (rand() % 3) {
+    //if (rand() % 10) {
     //    return ALL_CARDINALS[rand() % 4];
     //}
     return moves[rand() % moves.size()];
