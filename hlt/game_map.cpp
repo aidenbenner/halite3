@@ -241,7 +241,7 @@ struct TimePos {
         return Direction::STILL;
     }
 
-RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position start, Position dest, double time_bank) {
+RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position start, Position dest, Order& order, double time_bank) {
     Direction best_move = Direction::STILL;
     double best_cost = -1000000;
     int best_turns = 1;
@@ -250,8 +250,11 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
     vector<Position> best_path;
     Timer timer;
     timer.start();
-    int itrs = max(2000, calculate_distance(start, dest) * 100);
+    int itrs = min(2000, calculate_distance(start, dest) * 100);
     int i = 0;
+
+    map<Direction, int> costMp;
+
     while (i < itrs) {
         if (time_bank != 0 && timer.elapsed() > time_bank) {
             break;
@@ -305,12 +308,19 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         }
         double c = (dest_halite + curr_halite - starting_halite - cost) / turns;
         //log::log(i, calculate_distance(start, dest), curr_halite, turns, c, first_move);
+        if (!costMp.count(first_move)) costMp[first_move] = c;
+        costMp[first_move] = fmax(costMp[first_move], c);
         if (c > best_cost) {
             best_path = path;
             best_cost = c;
             best_move = first_move;
             best_turns = turns;
         }
+    }
+
+    for (auto d : costMp) {
+        if (best_cost == 0) best_cost = 1;
+        order.add_dir_priority(d.first, pow(1e8, 1 - (d.second / best_cost)));
     }
 
     return {best_move, best_cost, best_turns, best_path};
@@ -795,10 +805,9 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
         int turns_back = calculate_distance(dest, shipyard);
         int turns = max(1, turns_to + turns_back);
 
-        /*
-        if (abs(turns_to_enemy_shipyard(g, dest) - turns_to_shipyard(g, dest)) < 5) {
+        if (abs(turns_to_enemy_shipyard(g, dest) - turns_to_shipyard(g, dest)) < 3) {
             halite *= 1.5;
-        }*/
+        }
 
         //if (turns_to > 0 && at(dest)->is_occupied(pid)) return 1000000;
         /*

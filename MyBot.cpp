@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv67");
+    game.ready("adbv71");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
 
@@ -389,31 +389,20 @@ int main(int argc, char* argv[]) {
                 vector<Direction> options;
                 options = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, mdest);
                 double remaining = 1.4 - turnTimer.elapsed();
-                auto walk = game_map->get_best_random_walk(ship->halite, ship->position, mdest, fmax(0.005, remaining / me->ships.size()));
-                // game_map->addPlanned(0, walk.walk);
-                auto bestdir = walk.bestdir;
-
-                added.insert(ship->id);
-                claimed.insert(mdest);
-
                 Order o{10, GATHERING, ship, mdest};
                 o.setAllCosts(1e8);
-
-                // log::log(bestdir);
-                /*if (game_map->at(ship->position)->halite >= game_map->get_mine_threshold()) {
-                   o.add_dir_priority(Direction::STILL, 1);
-                }
-                else {
-                    o.add_dir_priority(Direction::STILL, 1e4);
-                }*/
-
+                auto walk = game_map->get_best_random_walk(ship->halite, ship->position, mdest, o, fmax(0.005, remaining / me->ships.size()));
+                // game_map->addPlanned(0, walk.walk);
+                added.insert(ship->id);
+                claimed.insert(mdest);
+                o.setAllCosts(1e8);
+                o.add_dir_priority(walk.bestdir, 1);
 
                 int cost = 10;
                 for (auto d : options) {
                     o.add_dir_priority(d, cost);
                     cost *= 10;
                 }
-                o.add_dir_priority(bestdir, 1);
                 // o.add_dir_priority(Direction::STILL, 1e5);
 
                 ordersMap[ship->id] = o;
