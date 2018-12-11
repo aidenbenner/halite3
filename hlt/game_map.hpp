@@ -140,6 +140,10 @@ namespace hlt {
 
         Ship* enemy_in_range(Position p, PlayerId pl, bool on_square=false);
 
+        int turns_to_enemy_shipyard(Game &g, Position pos);
+
+        int turns_to_shipyard(Game &g, Position pos);
+
         std::vector<int> hal_dist;
         int get_halite_percentile(double percentile);
 
@@ -151,7 +155,7 @@ namespace hlt {
 
         int num_inspired(Position p, PlayerId id);
 
-        double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1, int extra_turns);
+        double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1, int extra_turns, Game& g);
 
         map<Position, bool> inspiredMemo;
 

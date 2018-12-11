@@ -266,6 +266,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         int cost = 0;
         int curr_square_hal = at(curr)->halite;
         vector<Position> path;
+        bool did_break = false;
         while (dest != curr) {
             path.push_back(curr);
             auto move = get_random_dir_towards(curr, dest);
@@ -288,11 +289,21 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             }
             turns += 1;
             if (curr_halite > 1000) {
+                did_break = true;
                 break;
             }
         }
+        int dest_halite = at(dest)->halite * 0.25;
 
-        double c = (at(dest)->halite * 0.25 + curr_halite - starting_halite - cost) / turns;
+        turns++;
+        if (is_inspired(dest, constants::PID)) {
+            dest_halite *= 3;
+        }
+        if (did_break) {
+            turns--;
+            dest_halite  = 0;
+        }
+        double c = (dest_halite + curr_halite - starting_halite - cost) / turns;
         //log::log(i, calculate_distance(start, dest), curr_halite, turns, c, first_move);
         if (c > best_cost) {
             best_path = path;
@@ -750,7 +761,26 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
         return sum;
     }
 
-    double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1, int extra_turns) {
+    int GameMap::turns_to_enemy_shipyard(Game &g, Position pos) {
+        static map<Position, int> dp;
+        if (dp.count(pos)) return dp[pos];
+        int turns = 100000;
+        for (auto p : g.players) {
+            if (p == g.me) {
+                continue;
+            }
+            turns = min(turns, calculate_distance(pos, p->shipyard->position));
+        }
+        return dp[pos] = turns;
+    }
+
+    int GameMap::turns_to_shipyard(Game &g, Position pos) {
+        //static map<Position, int> dp;
+        //if (dp.count(pos)) return dp[pos];
+        return calculate_distance(g.me->shipyard->position, pos);
+    }
+
+    double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1, int extra_turns, Game& g) {
         if (dest == shipyard) return 10000000;
         if (!is_1v1) {
             if (is_in_range_of_enemy(dest, pid)) {
@@ -758,11 +788,16 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
             }
         }
 
+
         int halite = at(dest)->halite;
 
         int turns_to = calculate_distance(s->position, dest);
         int turns_back = calculate_distance(dest, shipyard);
         int turns = max(1, turns_to + turns_back);
+
+        if (abs(turns_to_enemy_shipyard(g, dest) - turns_to_shipyard(g, dest)) < 5) {
+            halite *= 1.5;
+        }
 
         //if (turns_to > 0 && at(dest)->is_occupied(pid)) return 1000000;
         /*
@@ -807,7 +842,7 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
         return -out * 100;
     }
 
-    // count number of inspired enemies
+// count number of inspired enemies
     int GameMap::num_inspired(Position p, PlayerId id) {
         if (!constants::INSPIRATION_ENABLED) return 0;
         if (inspiredCountMemo.count(p)) return inspiredCountMemo[p];

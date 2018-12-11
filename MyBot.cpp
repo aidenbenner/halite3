@@ -325,7 +325,7 @@ int main(int argc, char* argv[]) {
                     int cost_from = dropoff_dist[dest.x][dest.y];
                     int extra_turns = turns[dest.x][dest.y];
 
-                    double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1, extra_turns);
+                    double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1, extra_turns, game);
                     costMatrix.back()[i * game_map->width + k] = c + 1000000;
                     if (!costs.count(c)) costs[c] = VC<Cost>();
 
@@ -388,7 +388,7 @@ int main(int argc, char* argv[]) {
 
                 vector<Direction> options;
                 options = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, mdest);
-                double remaining = 1.8 - turnTimer.elapsed();
+                double remaining = 1.4 - turnTimer.elapsed();
                 auto walk = game_map->get_best_random_walk(ship->halite, ship->position, mdest, fmax(0.005, remaining / me->ships.size()));
                 // game_map->addPlanned(0, walk.walk);
                 auto bestdir = walk.bestdir;
