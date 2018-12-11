@@ -795,9 +795,10 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
         int turns_back = calculate_distance(dest, shipyard);
         int turns = max(1, turns_to + turns_back);
 
+        /*
         if (abs(turns_to_enemy_shipyard(g, dest) - turns_to_shipyard(g, dest)) < 5) {
             halite *= 1.5;
-        }
+        }*/
 
         //if (turns_to > 0 && at(dest)->is_occupied(pid)) return 1000000;
         /*
