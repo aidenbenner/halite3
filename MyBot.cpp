@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv71");
+    game.ready("adbv72");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
 
@@ -190,7 +190,7 @@ int main(int argc, char* argv[]) {
                     best_dropoff = ship.get();
                 }
                 if (remaining_turns > 100
-                    && dist > game_map->width / 3
+                    && dist >= 15
                     && avg_halite > 180
                     && curr_dropoffs < expected_dropoffs) {
                     log::flog(log::Log{game.turn_number - 1, ship->position.x, ship->position.y, "could drop", "#00FFFF"});
@@ -311,7 +311,7 @@ int main(int argc, char* argv[]) {
             costMatrix.push_back(vector<double>(game_map->width * game_map->width, 1e9));
             vector<Direction> options;
             VVI &dist = greedy_bfs[ship->position].dist;
-            VVI &turns = greedy_bfs[ship->position].turns;
+            // VVI &turns = greedy_bfs[ship->position].turns;
 
             // Take top ships.size() + 1 costs
             multimap<double, Position> candidate_squares;
@@ -320,14 +320,14 @@ int main(int argc, char* argv[]) {
                 for (int k = 0; k < game_map->width; k++) {
                     auto dest = Position(i, k);
                     auto drop = game_map->closest_dropoff(dest, &game);
-                    VVI &dropoff_dist = ship_to_dist[drop].dist;
+                    // VVI &dropoff_dist = ship_to_dist[drop].dist;
                     int net_cost_to = dist[dest.x][dest.y];
-                    int cost_from = dropoff_dist[dest.x][dest.y];
-                    int extra_turns = turns[dest.x][dest.y];
+                    int cost_from = 0; //dropoff_dist[dest.x][dest.y];
+                    int extra_turns = 0; //turns[dest.x][dest.y];
 
                     double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1, extra_turns, game);
                     costMatrix.back()[i * game_map->width + k] = c + 1000000;
-                    if (!costs.count(c)) costs[c] = VC<Cost>();
+                    //if (!costs.count(c)) costs[c] = VC<Cost>();
 
                     //candidate_squares.insert(make_pair(c, dest));
                     /*
@@ -341,9 +341,9 @@ int main(int argc, char* argv[]) {
                         log::flog(log::Log{game.turn_number - 1, dest.x, dest.y,
                                            "cost - " + color + " - " + to_string(c), color});
                     }*/
-                    auto sp = ShipPos{ship->id, dest};
-                    costMp[sp] = c;
-                    costs[c].PB(Cost{dest, ship.get()});
+                    //auto sp = ShipPos{ship->id, dest};
+                    //costMp[sp] = c;
+                    //costs[c].PB(Cost{dest, ship.get()});
                 }
             }
 
@@ -369,6 +369,8 @@ int main(int argc, char* argv[]) {
         }
 
         vector<int> assgn(me->ships.size(), 0);
+        double remaining = (1.6 - turnTimer.elapsed()) / me->ships.size();
+        log::log("After hungarian ", turnTimer.elapsed());
         if (costMatrix.size() != 0) {
             log::log(costMatrix.size(), costMatrix[0].size());
             hungarianAlgorithm.Solve(costMatrix, assgn);
@@ -388,7 +390,6 @@ int main(int argc, char* argv[]) {
 
                 vector<Direction> options;
                 options = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, mdest);
-                double remaining = 1.4 - turnTimer.elapsed();
                 Order o{10, GATHERING, ship, mdest};
                 o.setAllCosts(1e8);
                 auto walk = game_map->get_best_random_walk(ship->halite, ship->position, mdest, o, fmax(0.005, remaining / me->ships.size()));
@@ -408,6 +409,7 @@ int main(int argc, char* argv[]) {
                 ordersMap[ship->id] = o;
             }
         }
+        log::log("After random walks", turnTimer.elapsed());
 
         for (const auto &ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
@@ -453,7 +455,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        log::log("Starting resolve phase");
+        log::log("Starting resolve phase", turnTimer.elapsed());
         vector<vector<double>> directionCostMatrix(me->ships.size(), vector<double>(ind, 1e10));
         int i = 0;
         for (auto s : me->ships) {

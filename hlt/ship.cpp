@@ -14,7 +14,6 @@ std::shared_ptr<hlt::Ship> hlt::Ship::_generate(hlt::PlayerId player_id) {
     hlt::get_sstream() >> ship_id >> x >> y >> halite;
 
     return std::make_shared<hlt::Ship>(player_id, ship_id, x, y, halite);
-
 }
 
 vector<Direction> Ship::GetBannedDirs(GameMap *game_map, EnemyResponse type, Game& g) {
@@ -62,15 +61,12 @@ vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Ga
                     out.push_back(d);
                     break;
                 case SMART:
-                    Ship *s = game_map->get_closest_ship(position, g.players);
-
+                    Ship *s = game_map->get_closest_ship(position, g.players, {this, enemy});
                     if (s->owner == constants::PID) {
-                        if (halite < 500) {
-                            if (halite < enemy->halite) {
-                                // risk collision
-                                out.push_back(d);
-                           }
-                        }
+                        //if (halite < enemy->halite) {
+                            // risk collision
+                        out.push_back(d);
+                        //}
                     }
                     break;
             }

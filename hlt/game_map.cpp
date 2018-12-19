@@ -29,13 +29,18 @@ Position GameMap::closest_dropoff(Position pos, Game *g) {
     return closestDropMp[pos] = p;
 }
 
-Ship* GameMap::get_closest_ship(Position pos, vector<shared_ptr<Player>> &p) {
+Ship * GameMap::get_closest_ship(Position pos, vector<shared_ptr<Player>> &p, vector<Ship *> ignore) {
     int dist = 10000000;
     Ship* soj = nullptr;
     for (auto player : p) {
         for (auto s : player->ships) {
             int curr =  calculate_distance(pos, s.second->position);
             if (curr < dist) {
+                bool should_ignore = false;
+                for (auto ig : ignore) {
+                    if (ig == s.second.get()) should_ignore = true;
+                }
+                if (should_ignore) continue;
                 dist = curr;
                 soj = s.second.get();
             }
@@ -257,6 +262,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
     while (i < itrs) {
         if (time_bank != 0 && timer.elapsed() > time_bank) {
+            log::log("breaking caues time bank");
             break;
         }
         i++;
@@ -335,15 +341,20 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
     return moves[rand() % moves.size()];
 }
 
+static bool visited[64][64];
     BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
         // dfs out of source to the entire map
-        set<Position> visited;
+        for (int i = 0; i<64; i++) {
+            for (int k = 0; k<64; k++) {
+                visited[i][k] = false;
+            }
+        }
 
         int def = 1e8;
         if (greedy)
             def = -1e8;
 
-        vector<vector<int>> dist(width,vector<int>(height,def));
+        vector<vector<int>> dist(width,vector<int>(height, def));
         vector<vector<Position>> parent(width,vector<Position>(height, {-1, -1}));
         vector<vector<int>> turns(width, vector<int>(height, 1e9));
 
@@ -352,6 +363,8 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
 
         vector<Position> frontier;
         vector<Position> next;
+        next.reserve(200);
+        frontier.reserve(200);
         next.push_back(source);
         while(!next.empty()) {
             std::swap(next, frontier);
@@ -360,24 +373,18 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
                 auto p = frontier.back();
                 frontier.pop_back();
 
-                if (visited.count(p)) {
+                if (visited[p.x][p.y]) {
                     continue;
                 }
 
-                /*
-                if (p != source && at(p)->is_occupied()) {
-                    visited.insert(p);
-                    continue;
-                }*/
-
-                visited.insert(p);
-
-                for (auto d : ALL_CARDINALS) {
-                    next.push_back(normalize(p.directional_offset(d)));
-                }
+                visited[p.x][p.y] = true;
 
                 for (auto d : ALL_CARDINALS) {
                     auto f = normalize(p.directional_offset(d));
+                    if (!visited[f.x][f.y]) {
+                        next.push_back(f);
+                        continue;
+                    }
                     int c = at(f)->cost() + dist[f.x][f.y];
                     if (greedy) {
                         int t = 1;
@@ -798,19 +805,27 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
             }
         }
 
-
         int halite = at(dest)->halite;
+        if (is_1v1) {
+            for (auto d : ALL_DIRS) {
+                if (at(dest.directional_offset(d))->halite > 1000) {
+                    halite += 2000;
+                }
+            }
+        }
+
+
 
         int turns_to = calculate_distance(s->position, dest);
         int turns_back = calculate_distance(dest, shipyard);
         int turns = max(1, turns_to + turns_back);
 
-        if (abs(turns_to_enemy_shipyard(g, dest) - turns_to_shipyard(g, dest)) < 3) {
-            halite *= 1.5;
-        }
+        //if (abs(turns_to_enemy_shipyard(g, dest) - turns_to_shipyard(g, dest)) < 5) {
+        //    halite *= 1.5;
+        //}
 
         //if (turns_to > 0 && at(dest)->is_occupied(pid)) return 1000000;
-        /*
+
         if (turns_to <= 2) {
             if (turns_back < width / 4) {
                 // should try and collide
@@ -822,7 +837,7 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
                     }
                 }
             }
-        }*/
+        }
 
         if (is_inspired(dest, pid)) {
             if (is_1v1 && turns_to < 6) {
@@ -875,7 +890,6 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
     }
 
 
-    map<Position, bool> inspiredMemo;
     bool GameMap::is_inspired(Position p, PlayerId id, bool enemy) {
         if (!constants::INSPIRATION_ENABLED) return false;
         if (inspiredMemo.count(p)) return inspiredMemo[p];

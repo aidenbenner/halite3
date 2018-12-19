@@ -60,7 +60,7 @@ namespace hlt {
 
         std::map<Position, Position> closestDropMp;
 
-        Ship* get_closest_ship(Position pos, vector<shared_ptr<Player>> &p);
+        Ship *get_closest_ship(Position pos, vector<shared_ptr<Player>> &p, vector<Ship *> ignore);
 
         Position closest_dropoff(Position pos, Game *g);
 
