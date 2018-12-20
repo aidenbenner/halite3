@@ -558,7 +558,7 @@ int main(int argc, char* argv[]) {
         log::log("Halite per ship turn, profitbability est");
         log::log(halite_per_ship_turn, profitability_est);
         if (is_1v1) {
-            ship_target = max(10, (int)opponent->ships.size());
+            ship_target = min(10, (int)opponent->ships.size());
             if (one_ship) {
                 should_spawn = me->ships.size() < 1;
             }
@@ -574,10 +574,10 @@ int main(int argc, char* argv[]) {
                 }
                 num_ships += p->ships.size();
             }
-            ship_target = max(10, num_ships / 3);
+            ship_target = min(10, num_ships / 3);
             should_spawn = remaining_turns > 300 || (int) me->ships.size() < ship_target;
         }
-        should_spawn |= profitability_est > 1100;
+        should_spawn |= profitability_est > 1500;
 
         built_ship_last = false;
         if (me->halite >= save_to &&
