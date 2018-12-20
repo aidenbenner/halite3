@@ -577,7 +577,7 @@ int main(int argc, char* argv[]) {
             ship_target = min(10, num_ships / 3);
             should_spawn = remaining_turns > 300 || (int) me->ships.size() < ship_target;
         }
-        should_spawn |= profitability_est > 1500;
+        should_spawn |= profitability_est > 2000;
 
         built_ship_last = false;
         if (me->halite >= save_to &&
