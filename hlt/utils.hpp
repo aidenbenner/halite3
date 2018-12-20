@@ -44,9 +44,16 @@ struct Timer {
 
 
 class EMA {
+	double last = 0;
+public:
 
+	double get() {
+	    return last;
+	}
 
-
+	double add(double curr) {
+	    return last = (curr - last) * 0.2 + curr;
+	}
 };
 
 

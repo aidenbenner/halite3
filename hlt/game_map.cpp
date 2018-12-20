@@ -255,7 +255,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
     vector<Position> best_path;
     Timer timer;
     timer.start();
-    int itrs = min(2000, calculate_distance(start, dest) * 100);
+    int itrs = min(500, calculate_distance(start, dest) * 50);
     int i = 0;
 
     map<Direction, int> costMp;

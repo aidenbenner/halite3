@@ -14,6 +14,7 @@ namespace hlt {
 
     struct Ship : Entity {
         Halite halite;
+        ShipState state;
 
         Ship(PlayerId player_id, EntityId ship_id, int x, int y, Halite halite) :
             Entity(player_id, ship_id, x, y),

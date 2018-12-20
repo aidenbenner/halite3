@@ -4,6 +4,7 @@
 #include "hlt/utils.hpp"
 #include "hlt/hungarian.hpp"
 #include "hlt/game_map.hpp"
+#include "hlt/metrics.hpp"
 
 #include <random>
 #include <vector>
@@ -34,12 +35,6 @@ bool constants::IS_DEBUG = false;
 int constants::PID = 0;
 
 typedef VC<Position> Path;
-
-enum ShipState {
-    GATHERING,
-    RETURNING,
-    SUPER_RETURN,
-};
 
 enum OrderType {
     GATHER,
@@ -113,6 +108,7 @@ int main(int argc, char* argv[]) {
     game.ready("adbv72");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
+    Metrics::init(&game);
 
     Timer turnTimer;
     for (;;) {
@@ -167,7 +163,10 @@ int main(int argc, char* argv[]) {
                 + 0.3 * me->ships.size()) {
                 stateMp[id] = SUPER_RETURN;
             }
+            ship->state = stateMp[id];
         }
+
+        double halite_per_ship_turn = Metrics::getHalPerShipEma();
 
         set<EntityId> given_order;
         if (DROPOFFS_ENABLED) {
@@ -554,6 +553,10 @@ int main(int argc, char* argv[]) {
 
         int ship_target = 10;
         bool should_spawn;
+
+        int profitability_est = halite_per_ship_turn * remaining_turns;
+        log::log("Halite per ship turn, profitbability est");
+        log::log(halite_per_ship_turn, profitability_est);
         if (is_1v1) {
             ship_target = max(10, (int)opponent->ships.size());
             if (one_ship) {
@@ -574,6 +577,7 @@ int main(int argc, char* argv[]) {
             ship_target = max(10, num_ships / 3);
             should_spawn = remaining_turns > 300 || (int) me->ships.size() < ship_target;
         }
+        should_spawn |= profitability_est > 1100;
 
         built_ship_last = false;
         if (me->halite >= save_to &&

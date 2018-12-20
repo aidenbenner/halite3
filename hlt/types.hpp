@@ -16,6 +16,12 @@ namespace hlt {
     typedef std::vector<std::vector<int>> VVI;
     typedef std::vector<std::vector<Position>> VVP;
 
+    enum ShipState {
+        GATHERING,
+        RETURNING,
+        SUPER_RETURN,
+    };
+
     struct BFSR {
         VVI dist;
         VVP parent;
