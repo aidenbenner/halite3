@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
         if (built_ship_last) {
             last_ship_count += 1;
         }
-        if ((int)last_ship_count > (int)me->ships.size()) {
+        if ((int) last_ship_count > (int) me->ships.size()) {
             has_collided = true;
         }
         log::log("Has collided ", has_collided);
@@ -147,6 +147,7 @@ int main(int argc, char* argv[]) {
         // ROLE ASSIGNMENT
         multiset<Position> claimed;
 
+        int num_gathering_ships = 0;
         for (const auto &ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             EntityId id = ship->id;
@@ -159,19 +160,17 @@ int main(int argc, char* argv[]) {
             }
             if (ship->halite == 0) {
                 stateMp[id] = GATHERING;
+                num_gathering_ships++;
             }
-            if (remaining_turns < game_map->calculate_distance(ship->position, game_map->closest_dropoff(ship->position, &game))
-                                  + 0.3 * me->ships.size()) {
+            if (remaining_turns <
+                game_map->calculate_distance(ship->position, game_map->closest_dropoff(ship->position, &game))
+                + 0.3 * me->ships.size()) {
                 stateMp[id] = SUPER_RETURN;
             }
         }
 
-        // TODO make this an ordertype with a costfn to evalute when it's worth to gather vs build a dropoff
         set<EntityId> given_order;
         if (DROPOFFS_ENABLED) {
-            // Gathering
-            // DROPOFFs
-            // shipyard is a dropoff
             int expected_dropoffs = me->ships.size() / 15 + 1;
             int curr_dropoffs = me->dropoffs.size();
 
@@ -182,18 +181,20 @@ int main(int argc, char* argv[]) {
                 shared_ptr<Ship> ship = ship_iterator.second;
                 if (assigned.count(ship.get())) continue;
 
-                int dist = game_map->calculate_distance(ship->position, game_map->closest_dropoff(ship->position, &game));
+                int dist = game_map->calculate_distance(ship->position,
+                                                        game_map->closest_dropoff(ship->position, &game));
                 float avg_halite = game_map->avg_around_point(ship->position, 5);
 
                 if (game_map->at(ship)->halite > 4000 - ship->halite) {
                     curr_avg_halite = 9999999;
                     best_dropoff = ship.get();
                 }
-                if (remaining_turns > 100
+                if (remaining_turns > 60
                     && dist >= 15
                     && avg_halite > 180
                     && curr_dropoffs < expected_dropoffs) {
-                    log::flog(log::Log{game.turn_number - 1, ship->position.x, ship->position.y, "could drop", "#00FFFF"});
+                    log::flog(log::Log{game.turn_number - 1, ship->position.x, ship->position.y, "could drop",
+                                       "#00FFFF"});
                     if (avg_halite > curr_avg_halite) {
                         curr_avg_halite = avg_halite;
                         best_dropoff = ship.get();
@@ -207,7 +208,8 @@ int main(int argc, char* argv[]) {
             if (best_dropoff != nullptr && DROPOFFS_ENABLED) {
                 if (me->halite + best_dropoff->halite >= constants::DROPOFF_COST) {
                     auto ship = best_dropoff;
-                    me->dropoffs[(int) -ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x, ship->position.y);
+                    me->dropoffs[(int) -ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x,
+                                                                              ship->position.y);
 
                     given_order.insert(ship->id);
                     command_queue.push_back(ship->make_dropoff());
@@ -221,7 +223,6 @@ int main(int argc, char* argv[]) {
                     save_for_drop = true;
                 }
             }
-            // END DROPOFFS
         }
 
         log::log("Before BFS", turnTimer.elapsed());
@@ -289,13 +290,16 @@ int main(int argc, char* argv[]) {
         vector<Order> gather_orders;
 
         log::log("Start gathering");
+        log::log("Ship size", me->ships.size());
 
         VC<VC<double>> costMatrix;
-        costMatrix.reserve(me->ships.size());
-        map<int, Ship*> asnMp;
-        set<Ship*> frozen;
+        costMatrix.reserve(num_gathering_ships);
+        map<int, Ship *> asnMp;
+        set<Ship *> frozen;
 
-        int shipn = 0;
+
+        vector<vector<pair<double, Position>>> candidates;
+        int ship_count = 0;
         for (auto s : me->ships) {
             shared_ptr<Ship> ship = s.second;
             if (assigned.count(ship.get())) continue;
@@ -307,16 +311,15 @@ int main(int argc, char* argv[]) {
                 continue;
             }
 
-            asnMp[costMatrix.size()] = ship.get();
-            costMatrix.push_back(vector<double>(game_map->width * game_map->width, 1e9));
             vector<Direction> options;
             VVI &dist = greedy_bfs[ship->position].dist;
             // VVI &turns = greedy_bfs[ship->position].turns;
 
             // Take top ships.size() + 1 costs
-            multimap<double, Position> candidate_squares;
-
-            for (int i = 0; i < game_map->width; i++){
+            vector<pair<double, Position>> candidate_squares;
+            candidate_squares.reserve(me->ships.size());
+            asnMp[ship_count++] = ship.get();
+            for (int i = 0; i < game_map->width; i++) {
                 for (int k = 0; k < game_map->width; k++) {
                     auto dest = Position(i, k);
                     auto drop = game_map->closest_dropoff(dest, &game);
@@ -325,66 +328,60 @@ int main(int argc, char* argv[]) {
                     int cost_from = 0; //dropoff_dist[dest.x][dest.y];
                     int extra_turns = 0; //turns[dest.x][dest.y];
 
-                    double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1, extra_turns, game);
-                    costMatrix.back()[i * game_map->width + k] = c + 1000000;
-                    //if (!costs.count(c)) costs[c] = VC<Cost>();
-
-                    //candidate_squares.insert(make_pair(c, dest));
-                    /*
-                    if (shipn == 0) {
-                        stringstream ss;
-
-                        int colc = max(16, min(255, -(int)c));
-                        ss << "#" << std::hex << colc << "0000";
-                        string color = ss.str();
-                        std::transform(color.begin(), color.end(), color.begin(), ::toupper);
-                        log::flog(log::Log{game.turn_number - 1, dest.x, dest.y,
-                                           "cost - " + color + " - " + to_string(c), color});
-                    }*/
-                    //auto sp = ShipPos{ship->id, dest};
-                    //costMp[sp] = c;
-                    //costs[c].PB(Cost{dest, ship.get()});
+                    double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1,
+                                                extra_turns, game);
+                    // costMatrix.back()[i * game_map->width + k] = c + 1000000;
+                    candidate_squares.push_back(make_pair(c + 1000000, dest));
+                    push_heap(candidate_squares.begin(), candidate_squares.end());
+                    if ((int)candidate_squares.size() > (int)me->ships.size()) {
+                        pop_heap(candidate_squares.begin(), candidate_squares.end());
+                        candidate_squares.pop_back();
+                    }
                 }
             }
+            candidates.push_back(candidate_squares);
+        }
 
-            /*
-            size_t count = 0;
-            for (auto square : candidate_squares) {
-                if (count > me->ships.size() + 20) {
-                    break;
+
+
+        // Compress states for hungarian assignment
+        map<Position, int> posToInd;
+        map<int, Position> indToPos;
+        int pos_counter = 0;
+        int ship_counter = 0;
+        for (auto shipc : candidates) {
+            for (auto c : shipc) {
+                if (!posToInd.count(c.second)) {
+                    posToInd[c.second] = pos_counter;
+                    indToPos[pos_counter] = c.second;
+                    ++pos_counter;
                 }
-                auto cost = game_map->get_best_random_walk(ship->halite, ship->position, square.second);
-                int turns_back = game_map->calculate_distance(ship->position, game_map->closest_dropoff(ship->position, &game));
-                double c = (cost.cost * cost.turns) / (turns_back + cost.turns);
-                costMatrix.back()[game_map->width * square.second.x + square.second.y] = 10000 - 50 * c;
-                log::flog(log::Log{game.turn_number - 1, square.second.x, square.second.y, "cost - " + std::to_string(c), "#DD00DD"});
-                //log::log(cost);
-                count += 1;
-            }*/
-
-            if (shipn == 0) {
-                //log::flog(log::Log{game.turn_number - 1, ship->position.x, ship->position.y, "cost - " + std::to_string(ship->id), "#DD00DD"});
             }
-            shipn++;
+            ship_counter++;
+        }
+
+        ship_counter = 0;
+        for (auto shipc : candidates) {
+            costMatrix.push_back(vector<double>(pos_counter, 1e9));
+            for (auto c : shipc) {
+                costMatrix.at(ship_counter).at(posToInd[c.second]) = c.first;
+            }
+            ship_counter++;
         }
 
         vector<int> assgn(me->ships.size(), 0);
         double remaining = (1.6 - turnTimer.elapsed()) / me->ships.size();
-        log::log("After hungarian ", turnTimer.elapsed());
         if (costMatrix.size() != 0) {
             log::log(costMatrix.size(), costMatrix[0].size());
+            log::log("Before hungarian ", turnTimer.elapsed());
             hungarianAlgorithm.Solve(costMatrix, assgn);
+            log::log("After hungarian ", turnTimer.elapsed());
             for (auto i : asnMp) {
                 log::log("Ship ", i.second->id);
                 auto ship = i.second;
-                int x = assgn[i.first] / game_map->width;
-                int y = assgn[i.first] % game_map->width;
-                log::log(assgn[i.first] / game_map->width);
-                log::log(assgn[i.first] % game_map->width);
+                auto mdest = indToPos[assgn[i.first]];
 
-
-                auto mdest = Position{x,y};
-                log::flog(log::Log{game.turn_number - 1, x, y, "gather - " + std::to_string(ship->id), "#FF0000"});
+                log::flog(log::Log{game.turn_number - 1, mdest.x, mdest.y, "gather - " + std::to_string(ship->id), "#FF0000"});
                 log::flog(log::Log{game.turn_number - 1, ship->position.x, ship->position.y,
                                    "Going to - " + to_string(mdest.x) + " " + to_string(mdest.y), "#FFFFFF"});
 
@@ -443,7 +440,7 @@ int main(int argc, char* argv[]) {
         }
 
         map<Position, int> bijectToPos;
-        map<int, Position> indToPos;
+        indToPos.clear();
         int ind = 0;
         for (auto s : me->ships) {
             for (auto p : game_map->get_surrounding_pos(s.second->position)) {
