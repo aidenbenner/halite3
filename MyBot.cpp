@@ -563,21 +563,36 @@ int main(int argc, char* argv[]) {
                 should_spawn = me->ships.size() < 1;
             }
             else {
-                should_spawn = remaining_turns > 220 || (int) me->ships.size() < ship_target;
+                should_spawn = profitability_est > 2000;
+                should_spawn |= remaining_turns > 220 || (int) me->ships.size() < ship_target;
+
+                if ((int)me->ships.size() > (int)opponent->ships.size() + 10) {
+                    should_spawn = false;
+                }
             }
         }
         else {
             int num_ships = 0;
+            int min_ships = 9000;
+            int max_ships = 0;
             for (auto p : game.players) {
                 if (p->id == me->id) {
                     continue;
                 }
+                max_ships = max(max_ships, (int)p->ships.size());
+                min_ships = min(min_ships, (int)p->ships.size());
                 num_ships += p->ships.size();
             }
             ship_target = min(10, num_ships / 3);
-            should_spawn = remaining_turns > 300 || (int) me->ships.size() < ship_target;
+            should_spawn = profitability_est > 2000;
+            should_spawn |= remaining_turns > 300 || (int) me->ships.size() < ship_target;
+            if ((int)me->ships.size() < min_ships - 5) {
+                should_spawn = true;
+            }
+            if ((int)me->ships.size() > max_ships + 9) {
+                should_spawn = false;
+            }
         }
-        should_spawn |= profitability_est > 2000;
 
         built_ship_last = false;
         if (me->halite >= save_to &&
