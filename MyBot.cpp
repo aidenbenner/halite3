@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv72");
+    game.ready("adbv80");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
     Metrics::init(&game);
@@ -554,9 +554,9 @@ int main(int argc, char* argv[]) {
         int ship_target = 10;
         bool should_spawn;
 
-        int profitability_est = halite_per_ship_turn * remaining_turns;
-        log::log("Halite per ship turn, profitbability est");
-        log::log(halite_per_ship_turn, profitability_est);
+        int profitability_est = halite_per_ship_turn * (remaining_turns - 60);
+        log::log("Halite per ship turn, profit est");
+        log::log(halite_per_ship_turn, halite_per_ship_turn, profitability_est);
         if (is_1v1) {
             ship_target = min(10, (int)opponent->ships.size());
             if (one_ship) {
