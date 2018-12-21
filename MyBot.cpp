@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv80");
+    game.ready("adbv81");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
     Metrics::init(&game);
@@ -144,6 +144,7 @@ int main(int argc, char* argv[]) {
         multiset<Position> claimed;
 
         int num_gathering_ships = 0;
+
         for (const auto &ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             EntityId id = ship->id;
@@ -557,17 +558,28 @@ int main(int argc, char* argv[]) {
         int profitability_est = halite_per_ship_turn * (remaining_turns - 60);
         log::log("Halite per ship turn, profit est");
         log::log(halite_per_ship_turn, halite_per_ship_turn, profitability_est);
+
+        int total_ships = 1;
+        for (auto p : game.players) {
+            total_ships += p->ships.size();
+        }
+
+        int remaining_hal_per_ship = game_map->get_hal() / total_ships;
+
         if (is_1v1) {
             ship_target = min(10, (int)opponent->ships.size());
             if (one_ship) {
                 should_spawn = me->ships.size() < 1;
             }
             else {
-                should_spawn = profitability_est > 2000;
+                should_spawn = remaining_hal_per_ship > 500;
                 should_spawn |= remaining_turns > 220 || (int) me->ships.size() < ship_target;
 
-                if ((int)me->ships.size() > (int)opponent->ships.size() + 10) {
+                if ((int)me->ships.size() > (int)opponent->ships.size() + 5) {
                     should_spawn = false;
+                }
+                if ((int)me->ships.size() < (int)opponent->ships.size()) {
+                    should_spawn = true;
                 }
             }
         }
@@ -584,12 +596,13 @@ int main(int argc, char* argv[]) {
                 num_ships += p->ships.size();
             }
             ship_target = min(10, num_ships / 3);
-            should_spawn = profitability_est > 2000;
+            should_spawn = remaining_hal_per_ship > 500;
+            //should_spawn = profitability_est > 1100 && remaining_hal_per_ship > 1100;
             should_spawn |= remaining_turns > 300 || (int) me->ships.size() < ship_target;
             if ((int)me->ships.size() < min_ships - 5) {
                 should_spawn = true;
             }
-            if ((int)me->ships.size() > max_ships + 9) {
+            if ((int)me->ships.size() > max_ships + 5) {
                 should_spawn = false;
             }
         }

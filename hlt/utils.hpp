@@ -52,7 +52,7 @@ public:
 	}
 
 	double add(double curr) {
-	    return last = (curr - last) * 0.35 + last;
+	    return last = (curr - last) * 0.15 + last;
 	}
 };
 

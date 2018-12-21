@@ -167,6 +167,16 @@ namespace hlt {
 
         float avg_around_point(Position p, int r);
 
+        int get_hal() {
+            int hal = 0;
+            for (int i = 0; i<width; i++) {
+                for (int k = 0; k<height; k++) {
+                    hal += at(i,k)->halite;
+                }
+            }
+            return hal;
+        }
+
         void _update();
         static std::unique_ptr<GameMap> _generate();
     };
