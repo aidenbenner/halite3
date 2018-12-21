@@ -279,6 +279,11 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         while (dest != curr) {
             path.push_back(curr);
             auto move = get_random_dir_towards(curr, dest);
+            if (at(curr)->occupied_by_not(constants::PID)) {
+                curr_halite = 0;
+                did_break = true;
+                break;
+            }
             if (curr_halite < curr_square_hal * 0.1 || move == Direction::STILL) {
                 if (is_inspired(curr, constants::PID)) {
                     // log::log("is inspired");
