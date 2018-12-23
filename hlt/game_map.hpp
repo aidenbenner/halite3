@@ -19,30 +19,16 @@
 
 using namespace std;
 namespace hlt {
-    struct pairhash {
-    public:
-      template <typename T, typename U>
-      std::size_t operator()(const std::pair<T, U> &x) const
-      {
-        return std::hash<T>()(x.first) + std::hash<U>()(x.second) * 255;
-      }
-    };
-
-    struct TimePos {
-        int turn;
-        Position p;
-        friend bool operator<(const TimePos& a, const TimePos& b) {
-            if (a.turn ==  b.turn) {
-                return a.p < b.p;
-            }
-            return a.turn < b.turn;
-        }
-    };
-
     struct Ship;
 
     class GameMap {
     public:
+        Game *game;
+
+        void initGame(Game *g) {
+            game = g;
+        }
+
         int width;
         int height;
         std::vector<std::vector<MapCell>> cells;
@@ -60,11 +46,13 @@ namespace hlt {
 
         std::map<Position, Position> closestDropMp;
 
-        Ship *get_closest_ship(Position pos, vector<shared_ptr<Player>> &p, vector<Ship *> ignore);
+        Ship * get_closest_ship(Position pos, const vector<shared_ptr<Player>> &p, const vector<Ship*> &ignore);
+
+        Ship * closestEnemyShip(Position pos);
+
+        Ship * closestFriendlyShip(Position pos);
 
         Position closest_dropoff(Position pos, Game *g);
-
-        Ship* get_closest_ship(Position pos, Player &p);
 
         bool checkSet(int future_turns, Position p);
 

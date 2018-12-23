@@ -4,11 +4,18 @@
 void hlt::Player::_update(int num_ships, int num_dropoffs, Halite halite) {
     this->halite = halite;
 
-    ships.clear();
+    map<EntityId, shared_ptr<Ship>> nextShips;
     for (int i = 0; i < num_ships; ++i) {
         std::shared_ptr<hlt::Ship> ship = hlt::Ship::_generate(id);
-        ships[ship->id] = ship;
+        if (ships.count(ship->id)) {
+            nextShips[ship->id] = ships[ship->id];
+            nextShips[ship->id]->_update(ship->halite, ship->position);
+        }
+        else {
+            nextShips[ship->id] = ship;
+        }
     }
+    ships = nextShips;
 
     dropoffs.clear();
     for (int i = 0; i < num_dropoffs; ++i) {

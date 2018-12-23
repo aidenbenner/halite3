@@ -37,7 +37,7 @@ namespace hlt {
         }
 
         int gain() {
-            return halite + constants::EXTRACT_RATIO ;
+            return halite / constants::EXTRACT_RATIO ;
         }
 
         // Gain after n turns of pickups

@@ -16,6 +16,9 @@ namespace hlt {
         Halite halite;
         ShipState state;
 
+        int last_hal = 0;
+        int lifetime_hal = 0;
+
         Ship(PlayerId player_id, EntityId ship_id, int x, int y, Halite halite) :
             Entity(player_id, ship_id, x, y),
             halite(halite)
@@ -44,11 +47,17 @@ namespace hlt {
             log::log("Ship #" + std::to_string(id) + ": " + s);
         }
 
-        vector<Direction> GetBannedDirs(GameMap *game_map, EnemyResponse type);
-
-        vector<Direction> GetAllowedDirs(GameMap *game_map, EnemyResponse type);
-
         static std::shared_ptr<Ship> _generate(PlayerId player_id);
+
+        void _update(int halite, Position position) {
+            this->halite = halite;
+            this->position = position;
+
+            if (halite == 0 && last_hal > 100) {
+                lifetime_hal += last_hal;
+            }
+            last_hal = this->halite;
+        }
     };
 
 

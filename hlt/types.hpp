@@ -16,6 +16,18 @@ namespace hlt {
     typedef std::vector<std::vector<int>> VVI;
     typedef std::vector<std::vector<Position>> VVP;
 
+
+    struct TimePos {
+        int turn;
+        Position p;
+        friend bool operator<(const TimePos& a, const TimePos& b) {
+            if (a.turn ==  b.turn) {
+                return a.p < b.p;
+            }
+            return a.turn < b.turn;
+        }
+    };
+
     enum ShipState {
         GATHERING,
         RETURNING,
