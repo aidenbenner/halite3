@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv81");
+    game.ready("adbv86");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
     Metrics::init(&game);
@@ -174,7 +174,7 @@ int main(int argc, char* argv[]) {
 
         set<EntityId> given_order;
         if (DROPOFFS_ENABLED) {
-            int expected_dropoffs = me->ships.size() / 15 + 1;
+            int expected_dropoffs = me->ships.size() / 12 + 1;
             int curr_dropoffs = me->dropoffs.size();
 
             Ship *best_dropoff = nullptr;
@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
                 }
                 if (remaining_turns > 60
                     && dist >= 15
-                    && avg_halite > 180
+                    && avg_halite > 130
                     && curr_dropoffs < expected_dropoffs) {
                     log::flog(log::Log{game.turn_number - 1, ship->position.x, ship->position.y, "could drop",
                                        "#00FFFF"});
@@ -599,7 +599,7 @@ int main(int argc, char* argv[]) {
                 num_ships += p->ships.size();
             }
             ship_target = min(10, num_ships / 3);
-            should_spawn = remaining_hal_per_ship > 1000;
+            should_spawn = remaining_hal_per_ship > 500;
             //should_spawn = profitability_est > 1100 && remaining_hal_per_ship > 1100;
             should_spawn |= remaining_turns > 300 || (int) me->ships.size() < ship_target;
             if ((int)me->ships.size() < min_ships - 5) {

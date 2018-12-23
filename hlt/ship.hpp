@@ -19,6 +19,8 @@ namespace hlt {
         int last_hal = 0;
         int lifetime_hal = 0;
 
+        vector<Position> history;
+
         Ship(PlayerId player_id, EntityId ship_id, int x, int y, Halite halite) :
             Entity(player_id, ship_id, x, y),
             halite(halite)
@@ -49,10 +51,22 @@ namespace hlt {
 
         static std::shared_ptr<Ship> _generate(PlayerId player_id);
 
+        bool is_stuck() {
+            if (history.size() < 5) return false;
+            for (int i = 0; i<4; i++) {
+                int ind = history.size() - 1 - i;
+                if (history[ind] != history[ind - 1]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         void _update(int halite, Position position) {
             this->halite = halite;
             this->position = position;
 
+            history.push_back(position);
             if (halite == 0 && last_hal > 100) {
                 lifetime_hal += last_hal;
             }

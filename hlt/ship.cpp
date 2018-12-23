@@ -41,13 +41,16 @@ vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Ga
         return vector<Direction>(1, Direction::STILL);
     }
 
+    bool stuck = is_stuck();
+
     // Check other dirs
     vector<Direction> out;
     for (auto d : ALL_DIRS) {
         auto pos = this->position.directional_offset(d);
         Ship* enemy_on_square = game_map->enemy_in_range(pos, constants::PID, true);
         Ship* enemy = game_map->enemy_in_range(pos, constants::PID);
-        if (enemy != nullptr) {
+
+        if (!stuck && enemy != nullptr) {
             switch(type) {
                 case AVOID:
                     // Don't add

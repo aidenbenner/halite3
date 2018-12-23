@@ -32,6 +32,7 @@ namespace hlt {
         int width;
         int height;
         std::vector<std::vector<MapCell>> cells;
+        map<pair<Position, int>, bool> likelyInspiredMemo;
 
         // Planning for the future: planned = planned + set
         std::set<TimePos> planned_route;
@@ -109,6 +110,8 @@ namespace hlt {
         vector<Direction> plan_gather_path(int starting_halite, Position start, Position dest);
 
         RandomWalkResult get_best_random_walk(int starting_halite, Position start, Position dest, Order& order, double time_bank = 0);
+
+        bool likely_inspired(Position p, int turns);
 
         Direction get_random_dir_towards(Position start, Position end);
 

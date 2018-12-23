@@ -64,6 +64,7 @@ void hlt::GameMap::_update() {
         }
     }
 
+    likelyInspiredMemo.clear();
     closestFriendlyMemo.clear();
     closestEnemyMemo.clear();
 
@@ -259,7 +260,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 break;
             }
             if (curr_halite < curr_square_hal * 0.1 || move == Direction::STILL) {
-                if (is_inspired(curr, constants::PID)) {
+                if (is_inspired(curr, constants::PID) || likely_inspired(curr, turns)) {
                     // log::log("is inspired");
                     curr_halite += 2 * curr_square_hal * 0.25;
                 }
@@ -290,7 +291,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         int dest_halite = at(dest)->halite * 0.25;
         int remaining_hal = at(dest)->halite * 0.75;
         turns++;
-        if (is_inspired(dest, constants::PID)) {
+        if (is_inspired(dest, constants::PID) || likely_inspired(dest, turns)) {
             dest_halite *= 3;
         }
         if (did_break) {
@@ -300,10 +301,10 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         double c = (min(1000, dest_halite + curr_halite - cost) - starting_halite) / turns;
 
         // try 3 waits on the current square
-        for (int i = 1; i<=3; i++) {
+        for (int i = 1; i<=6; i++) {
             if (did_break) break;
             dest_halite += 0.25 * remaining_hal;
-            if (is_inspired(dest, constants::PID)) {
+            if (is_inspired(dest, constants::PID) || likely_inspired(dest, turns + i)) {
                 dest_halite += 0.5 * remaining_hal;
             }
             remaining_hal *= 0.75;
@@ -796,8 +797,6 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         }
     }
 
-
-
     int halite = at(dest)->halite;
     if (is_1v1) {
         for (auto d : ALL_DIRS) {
@@ -847,7 +846,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         }
     }
 
-    if (is_inspired(dest, pid)) {
+    if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
         if (is_1v1 && turns_to < 6) {
             halite *= 3;
         }
@@ -891,6 +890,26 @@ int GameMap::num_inspired(Position p, PlayerId id) {
     return inspiredCountMemo[p] = count;
 }
 
+
+bool GameMap::likely_inspired(Position p, int turns) {
+    if (!constants::INSPIRATION_ENABLED) return false;
+    turns = min(2, turns / 2);
+    if (likelyInspiredMemo.count(make_pair(p, turns))) return likelyInspiredMemo[make_pair(p, turns)];
+    int radius = turns + constants::INSPIRATION_RADIUS * 2;
+    int enemies = 0;
+    for (int i = 0; i<radius * 2; i++) {
+        for (int k = 0; k<radius * 2; k++) {
+            auto c = Position {p.x - radius + i, p.y - radius + k};
+            if (this->calculate_distance(c, p) <= min(2, turns / 2) + constants::INSPIRATION_RADIUS) {
+                if (at(c)->occupied_by_not(constants::PID)) {
+                    enemies++;
+                }
+            }
+        }
+    }
+
+    return likelyInspiredMemo[make_pair(p, turns)] = enemies >= 4;
+}
 
 bool GameMap::is_inspired(Position p, PlayerId id, bool enemy) {
     if (!constants::INSPIRATION_ENABLED) return false;
