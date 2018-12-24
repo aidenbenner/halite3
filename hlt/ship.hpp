@@ -52,8 +52,11 @@ namespace hlt {
         static std::shared_ptr<Ship> _generate(PlayerId player_id);
 
         bool is_stuck() {
-            if (history.size() < 5) return false;
-            for (int i = 0; i<4; i++) {
+            if (history.size() < 8) return false;
+            if (halite - last_hal > 50) {
+                return false;
+            }
+            for (int i = 0; i<7; i++) {
                 int ind = history.size() - 1 - i;
                 if (history[ind] != history[ind - 1]) {
                     return false;

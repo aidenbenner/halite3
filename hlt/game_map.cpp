@@ -915,6 +915,7 @@ int GameMap::num_inspired(Position p, PlayerId id) {
 
 
 bool GameMap::likely_inspired(Position p, int turns) {
+    return is_inspired(p, constants::PID);
     if (!constants::INSPIRATION_ENABLED) return false;
     turns = min(2, turns / 2);
     if (likelyInspiredMemo.count(make_pair(p, turns))) return likelyInspiredMemo[make_pair(p, turns)];
