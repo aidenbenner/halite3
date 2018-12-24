@@ -170,5 +170,12 @@ namespace hlt {
 
         void _update();
         static std::unique_ptr<GameMap> _generate();
+
+        vector<Position> points_around_pos(Position p, int r);
+
+        int enemies_around_point(Position p, int r);
+
+        int friends_around_point(Position p, int r);
+
     };
 }

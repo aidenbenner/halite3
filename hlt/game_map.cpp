@@ -791,11 +791,12 @@ int GameMap::turns_to_shipyard(Game &g, Position pos) {
 
 double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1, int extra_turns, Game& g) {
     if (dest == shipyard) return 10000000;
+    /*
     if (!is_1v1) {
         if (is_in_range_of_enemy(dest, pid)) {
             return 100000;
         }
-    }
+    }*/
 
     int halite = at(dest)->halite;
     if (is_1v1) {
@@ -973,6 +974,33 @@ float GameMap::avg_around_point(Position p, int r) {
         }
     }
     return sum / (float)count;
+}
+
+vector<Position> GameMap::points_around_pos(Position p, int r) {
+    vector<Position> out;
+    for (int i = 0; i<2 * r; i++) {
+        for (int k = 0; k< 2 * r; k++) {
+            auto end = Position(p.x - r + i, p.y -r + k);
+            if (calculate_distance(p, end) <= r) {
+                out.push_back(end);
+            }
+        }
+    }
+    return out;
+}
+
+int GameMap::enemies_around_point(Position p, int r) {
+    auto points = points_around_pos(p, r);
+    return (int)std::count_if(points.begin(), points.end(), [this](Position p) {
+        return this->at(p)->occupied_by_not(constants::PID);
+    });
+}
+
+int GameMap::friends_around_point(Position p, int r) {
+    auto points = points_around_pos(p, r);
+    return (int)std::count_if(points.begin(), points.end(), [this](Position p) {
+        return this->at(p)->is_occupied(constants::PID);
+    });
 }
 
 void _update();
