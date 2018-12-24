@@ -170,7 +170,8 @@ namespace hlt {
 
         void _update();
         static std::unique_ptr<GameMap> _generate();
-
+        map<pair<Position, int>, int> enemies_around_point_memo;
+        map<pair<Position, int>, int> friends_around_point_memo;
         vector<Position> points_around_pos(Position p, int r);
 
         int enemies_around_point(Position p, int r);

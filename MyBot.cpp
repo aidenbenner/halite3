@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv86");
+    game.ready("adbv88");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
     Metrics::init(&game);
@@ -396,6 +396,7 @@ int main(int argc, char* argv[]) {
                 // game_map->addPlanned(0, walk.walk);
                 added.insert(ship->id);
                 claimed.insert(mdest);
+                /*
                 o.setAllCosts(1e8);
                 o.add_dir_priority(walk.bestdir, 1);
 
@@ -403,7 +404,7 @@ int main(int argc, char* argv[]) {
                 for (auto d : options) {
                     o.add_dir_priority(d, cost);
                     cost *= 10;
-                }
+                }*/
                 // o.add_dir_priority(Direction::STILL, 1e5);
 
                 ordersMap[ship->id] = o;

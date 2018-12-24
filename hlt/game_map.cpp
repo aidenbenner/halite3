@@ -64,6 +64,8 @@ void hlt::GameMap::_update() {
         }
     }
 
+    enemies_around_point_memo.clear();
+    friends_around_point_memo.clear();
     likelyInspiredMemo.clear();
     closestFriendlyMemo.clear();
     closestEnemyMemo.clear();
@@ -225,7 +227,10 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
     Direction best_move = Direction::STILL;
     double best_cost = -1000000;
     int best_turns = 1;
-    if (calculate_distance(start,dest) == 0) return {Direction::STILL, (double)at(dest)->halite * 0.25, 1};
+    if (calculate_distance(start,dest) == 0) {
+        order.add_dir_priority(Direction::STILL, 1);
+        return {Direction::STILL, (double)at(dest)->halite * 0.25, 1};
+    }
 
     vector<Position> best_path;
     Timer timer;
@@ -789,20 +794,37 @@ int GameMap::turns_to_shipyard(Game &g, Position pos) {
     return calculate_distance(g.me->shipyard->position, pos);
 }
 
+
+/*
+bool GameMap::should_collide(Position position, Ship* ship, Ship* enemy) {
+    Ship *s = get_closest_ship(position, game->players, {ship, enemy});
+    int enemies = enemies_around_point(position, 3);
+    int friends = enemies_around_point(position, 3);
+    if (s->owner == constants::PID) {
+        if (friends >= enemies) {
+            return true;
+        }
+    }
+    return false;
+}*/
+
 double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1, int extra_turns, Game& g) {
     if (dest == shipyard) return 10000000;
-    /*
     if (!is_1v1) {
-        if (is_in_range_of_enemy(dest, pid)) {
-            return 100000;
+        if (at(dest)->occupied_by_not(pid)) {
+            return 1000000;
         }
-    }*/
+    }
 
     int halite = at(dest)->halite;
     if (is_1v1) {
-        for (auto d : ALL_DIRS) {
-            if (at(dest.directional_offset(d))->halite > 1000) {
-                halite += 2000;
+        int enemies = enemies_around_point(dest, 3);
+        int friends = 1 + friends_around_point(dest, 3);
+        if (friends >= enemies) {
+            for (auto d : ALL_DIRS) {
+                if (at(dest.directional_offset(d))->halite > 1000) {
+                    halite += 2000;
+                }
             }
         }
     }
@@ -990,15 +1012,17 @@ vector<Position> GameMap::points_around_pos(Position p, int r) {
 }
 
 int GameMap::enemies_around_point(Position p, int r) {
+    if (enemies_around_point_memo.count({p, r})) return enemies_around_point_memo[{p, r}];
     auto points = points_around_pos(p, r);
-    return (int)std::count_if(points.begin(), points.end(), [this](Position p) {
+    return enemies_around_point_memo[{p, r}] = (int)std::count_if(points.begin(), points.end(), [this](Position p) {
         return this->at(p)->occupied_by_not(constants::PID);
     });
 }
 
 int GameMap::friends_around_point(Position p, int r) {
+    if (friends_around_point_memo.count({p, r})) return friends_around_point_memo[{p, r}];
     auto points = points_around_pos(p, r);
-    return (int)std::count_if(points.begin(), points.end(), [this](Position p) {
+    return friends_around_point_memo[{p, r}] = (int)std::count_if(points.begin(), points.end(), [this](Position p) {
         return this->at(p)->is_occupied(constants::PID);
     });
 }
