@@ -816,6 +816,14 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         }
     }
 
+    if (is_in_range_of_enemy(dest, constants::PID)) {
+        int enemies = enemies_around_point(dest, 3);
+        int friends = 1 + friends_around_point(dest, 3);
+        if (friends < enemies) {
+            return 100000;
+        }
+    }
+
     int halite = at(dest)->halite;
     if (is_1v1) {
         int enemies = enemies_around_point(dest, 3);
