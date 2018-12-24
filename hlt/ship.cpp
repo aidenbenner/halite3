@@ -47,7 +47,7 @@ vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Ga
     vector<Direction> out;
     for (auto d : ALL_DIRS) {
         auto pos = this->position.directional_offset(d);
-        Ship* enemy_on_square = game_map->enemy_in_range(pos, constants::PID, true);
+        // Ship* enemy_on_square = game_map->enemy_in_range(pos, constants::PID, true);
         Ship* enemy = game_map->enemy_in_range(pos, constants::PID);
 
         if (!stuck && enemy != nullptr) {
@@ -56,7 +56,7 @@ vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Ga
                     // Don't add
                     break;
                 case TOLERATE:
-                    if (enemy_on_square == nullptr) {
+                    if (d == Direction::STILL || enemy == nullptr) {
                         out.push_back(d);
                     }
                     break;
