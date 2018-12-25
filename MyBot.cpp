@@ -269,10 +269,10 @@ int main(int argc, char* argv[]) {
                 // options = game_map->minCostOptions(pars)// game_map->plan_min_cost_route(pars, ship->halite, ship->position, mdest);
             }
             Order o{0, RETURNING, ship.get(), mdest};
-            o.setAllCosts(1e9);
+            o.setAllCosts(1e7);
             o.add_dir_priority(Direction::STILL, 1e4);
 
-            int cost = 10;
+            int cost = 1;
             for (auto c : options) {
                 o.add_dir_priority(c, cost);
                 cost *= 10;
