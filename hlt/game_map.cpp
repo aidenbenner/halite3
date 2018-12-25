@@ -344,7 +344,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
     for (auto d : costMp) {
         if (best_cost == 0) best_cost = 1;
-        order.add_dir_priority(d.first, pow(1e8, 1 - (d.second / best_cost)));
+        order.add_dir_priority(d.first, 100 * pow(1e6, 1 - (d.second / best_cost)));
     }
 
     return {best_move, best_cost, best_turns, best_path};

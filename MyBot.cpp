@@ -466,7 +466,7 @@ int main(int argc, char* argv[]) {
             auto response = EnemyResponse::SMART;
             if (!is_1v1) {
                 if (has_collided) {
-                    response = TOLERATE;
+                    response = AVOID;
                 }
                 else {
                     response = TOLERATE;
@@ -485,7 +485,6 @@ int main(int argc, char* argv[]) {
             for (auto d : ship->GetBannedDirs(game_map.get(), response, game)) {
                 ordersMap[ship->id].add_dir_priority(d, 1e9);
             }
-
 
             auto drop = game_map->closest_dropoff(ship->position, &game);
             if (game_map->calculate_distance(ship->position, drop) <= 1 && state == SUPER_RETURN) {
@@ -512,7 +511,6 @@ int main(int argc, char* argv[]) {
         }
         log::log("After Dir Assignment ", turnTimer.elapsed());
 
-        log::log("hit");
         vector<int> dirShipMapping(me->ships.size());
         if (me->ships.size() > 0) {
             hungarianAlgorithm.Solve(directionCostMatrix, dirShipMapping);
