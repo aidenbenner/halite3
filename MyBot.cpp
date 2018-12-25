@@ -466,7 +466,7 @@ int main(int argc, char* argv[]) {
             auto response = EnemyResponse::SMART;
             if (!is_1v1) {
                 if (has_collided) {
-                    response = AVOID;
+                    response = TOLERATE;
                 }
                 else {
                     response = TOLERATE;
