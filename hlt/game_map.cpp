@@ -271,7 +271,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 }
                 else {
                     if (game->players.size() == 4) {
-                        curr_halite += -enemy_hal / 2;
+                        curr_halite += 0;
                     }
                 }
                 did_break = true;
@@ -296,7 +296,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 if (!costMp.count(first_move)) costMp[first_move] = -10;
             }
             turns += 1;
-            if (curr_halite > 1000) {
+            if (curr_halite >= 1000) {
                 did_break = true;
                 break;
             }
@@ -317,7 +317,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             turns--;
             dest_halite  = 0;
         }
-        double c = (dest_halite + curr_halite - cost - starting_halite) / turns;
+        double c = (dest_halite + curr_halite - starting_halite) / turns;
 
         // try 3 waits on the current square
         for (int i = 1; i<=6; i++) {
@@ -327,7 +327,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 dest_halite += 0.5 * remaining_hal;
             }
             remaining_hal *= 0.75;
-            c = fmax(c, (dest_halite + curr_halite - cost - starting_halite) / (turns + i));
+            c = fmax(c, (dest_halite + curr_halite - starting_halite) / (turns + i));
         }
 
 
@@ -758,11 +758,19 @@ bool GameMap::is_in_range_of_enemy(Position p, PlayerId pl, bool on_square) {
 Ship* GameMap::enemy_in_range(Position p, PlayerId pl, bool on_square) {
     if (at(p)->occupied_by_not(pl)) return at(p)->ship.get();
     if (on_square) return nullptr;
+    int mhal = 100000;
+    Ship* out = nullptr;
     for (int i = 0; i<4; i++) {
         auto po = p.directional_offset(ALL_CARDINALS[i]);
-        if (at(po)->occupied_by_not(pl)) return at(po)->ship.get();
+        if (at(po)->occupied_by_not(pl)) {
+            auto ship = at(po)->ship.get();
+            if (ship->halite < mhal) {
+                mhal = ship->halite;
+                out = ship;
+            }
+        }
     }
-    return nullptr;
+    return out;
 }
 
 std::vector<int> hal_dist;
@@ -831,13 +839,14 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     }
 
     int halite = at(dest)->halite;
+    /*
     if (is_1v1) {
         int enemies = enemies_around_point(dest, 3);
         int friends = 1 + friends_around_point(dest, 3);
         if (enemies > friends) {
             return 10000;
         }
-    }
+    }*/
 
     if (is_1v1) {
         int enemies = enemies_around_point(dest, 3);
