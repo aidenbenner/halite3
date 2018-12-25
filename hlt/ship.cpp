@@ -74,12 +74,18 @@ vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Ga
                     out.push_back(d);
                     break;
                 case TOLERATE:
+                    if (halite > enemy->halite + 200)
+                        break;
+                    if (d == Direction::STILL) {
+                        out.push_back(d);
+                        break;
+                    }
                 case SMART:
                     // in a 5 move radius who has more ships?
                     Ship *s = game_map->get_closest_ship(position, g.players, {this, enemy});
                     int enemies = game_map->enemies_around_point(position, 3);
                     int friends = game_map->friends_around_point(position, 3);
-                    if (halite > s->halite + 200)
+                    if (halite > enemy->halite + 200)
                         break;
                     if (s->owner == constants::PID) {
                         if (friends >= enemies) {

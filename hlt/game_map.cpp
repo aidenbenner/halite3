@@ -261,11 +261,18 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             auto move = get_random_dir_towards(curr, dest);
             if (at(curr)->occupied_by_not(constants::PID)) {
                 int enemy_hal = at(curr)->ship->halite;
-                if (starting_halite < enemy_hal) {
-                    curr_halite += enemy_hal;
+                if (starting_halite + 100 < enemy_hal) {
+                    if (game->players.size() == 4) {
+                        curr_halite += enemy_hal / 2;
+                    }
+                    else {
+                        curr_halite += enemy_hal;
+                    }
                 }
                 else {
-                    curr_halite += 0;
+                    if (game->players.size() == 4) {
+                        curr_halite += -enemy_hal / 2;
+                    }
                 }
                 did_break = true;
                 break;
