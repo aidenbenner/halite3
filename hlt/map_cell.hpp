@@ -56,6 +56,12 @@ namespace hlt {
             return !is_occupied(p) && is_occupied();
         }
 
+        bool occupied_by_enemy() {
+            if (ship != nullptr)
+                return ship->owner != constants::PID;
+            return false;
+        }
+
         bool is_occupied() const {
             return static_cast<bool>(ship);
         }

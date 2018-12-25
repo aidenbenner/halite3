@@ -260,7 +260,13 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             path.push_back(curr);
             auto move = get_random_dir_towards(curr, dest);
             if (at(curr)->occupied_by_not(constants::PID)) {
-                curr_halite = 0;
+                int enemy_hal = at(curr)->ship->halite;
+                if (starting_halite < enemy_hal) {
+                    curr_halite += enemy_hal;
+                }
+                else {
+                    curr_halite += 0;
+                }
                 did_break = true;
                 break;
             }
@@ -288,10 +294,11 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 break;
             }
             // assuming we reach 1000 now is it possible to beat the current best.
+            /*
             if ((1000 - starting_halite) / turns < costMp[first_move]) {
                 did_break = true;
                 break;
-            }
+            }*/
         }
         int dest_halite = at(dest)->halite * 0.25;
         int remaining_hal = at(dest)->halite * 0.75;
@@ -303,7 +310,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             turns--;
             dest_halite  = 0;
         }
-        double c = (min(1000, dest_halite + curr_halite - cost) - starting_halite) / turns;
+        double c = (dest_halite + curr_halite - cost - starting_halite) / turns;
 
         // try 3 waits on the current square
         for (int i = 1; i<=6; i++) {
@@ -313,7 +320,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 dest_halite += 0.5 * remaining_hal;
             }
             remaining_hal *= 0.75;
-            c = fmax(c, (min(1000, dest_halite + curr_halite - cost) - starting_halite) / (turns + i));
+            c = fmax(c, (dest_halite + curr_halite - cost - starting_halite) / (turns + i));
         }
 
 
@@ -816,15 +823,15 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         }
     }
 
-    if (is_1v1 && is_in_range_of_enemy(dest, constants::PID)) {
+    int halite = at(dest)->halite;
+    if (is_1v1) {
         int enemies = enemies_around_point(dest, 3);
         int friends = 1 + friends_around_point(dest, 3);
-        if (friends < enemies) {
-            return 100000;
+        if (enemies > friends) {
+            return 10000;
         }
     }
 
-    int halite = at(dest)->halite;
     if (is_1v1) {
         int enemies = enemies_around_point(dest, 3);
         int friends = 1 + friends_around_point(dest, 3);
