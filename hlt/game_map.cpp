@@ -2,6 +2,7 @@
 #include "input.hpp"
 #include "game.hpp"
 #include "utils.hpp"
+#include "metrics.hpp"
 #include <memory>
 
 using namespace std;
@@ -830,35 +831,38 @@ bool GameMap::should_collide(Position position, Ship* ship, Ship* enemy) {
     return false;
 }*/
 
-double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1, int extra_turns, Game& g) {
-    if (dest == shipyard) return 10000000;
-    if (!is_1v1) {
-        if (at(dest)->occupied_by_not(pid)) {
-            return 1000000;
+bool GameMap::should_collide(Position position, Ship *ship) {
+    auto enemy = at(position)->ship.get();
+
+    if (ship->halite > 700) return false;
+
+    // estimated future value of this ship
+    //if (ship->halite + Metrics::getHalPerShip() > enemy->halite) {
+    //    return false;
+    //}
+
+    Ship *s = get_closest_ship(position, game->players, {ship, enemy});
+    int enemies = enemies_around_point(position, 3);
+    int friends = friends_around_point(position, 3);
+    if (ship->halite > enemy->halite + 200)
+        return false;
+
+    if (s->owner == constants::PID) {
+        if (friends >= enemies) {
+            return true;
         }
     }
+    return false;
+}
+
+double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1,
+                       int extra_turns, Game &g, double future_ship_val) {
+    if (dest == shipyard) return 10000000;
+
 
     int halite = at(dest)->halite;
-    /*
-    if (is_1v1) {
-        int enemies = enemies_around_point(dest, 3);
-        int friends = 1 + friends_around_point(dest, 3);
-        if (enemies > friends) {
-            return 10000;
-        }
-    }*/
-
-    if (is_1v1) {
-        int enemies = enemies_around_point(dest, 3);
-        int friends = 1 + friends_around_point(dest, 3);
-        if (friends >= enemies) {
-            for (auto d : ALL_DIRS) {
-                if (at(dest.directional_offset(d))->halite > 1000) {
-                    halite += 2000;
-                }
-            }
-        }
-    }
+    //int enemies = enemies_around_point(dest, 4);
+    //int friends = 1 + friends_around_point(dest, 4);
 
     int turns_to = calculate_distance(s->position, dest);
     int turns_back = calculate_distance(dest, shipyard);

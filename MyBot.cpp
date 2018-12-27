@@ -111,8 +111,6 @@ int main(int argc, char* argv[]) {
     Metrics::init(&game);
 
     Timer turnTimer;
-    int profitable_ships = 0;
-    int max_total_ships = 0;
     for (;;) {
         game.update_frame();
         turnTimer.start();
@@ -322,6 +320,8 @@ int main(int argc, char* argv[]) {
             vector<pair<double, Position>> candidate_squares;
             candidate_squares.reserve(me->ships.size());
             asnMp[ship_count++] = ship.get();
+
+            double futureVal = Metrics::getHalPerShip();
             for (int i = 0; i < game_map->width; i++) {
                 for (int k = 0; k < game_map->width; k++) {
                     auto dest = Position(i, k);
@@ -332,7 +332,7 @@ int main(int argc, char* argv[]) {
                     int extra_turns = 0; //turns[dest.x][dest.y];
 
                     double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1,
-                                                extra_turns, game);
+                                                extra_turns, game, futureVal);
                     // costMatrix.back()[i * game_map->width + k] = c + 1000000;
                     candidate_squares.push_back(make_pair(c + 1000000, dest));
                     push_heap(candidate_squares.begin(), candidate_squares.end());
@@ -626,21 +626,13 @@ int main(int argc, char* argv[]) {
         log::log("Me: ", me->halite, me->ships.size(), me->dropoffs.size());
         for (auto p : game.getEnemies()) {
             log::log("Player " + to_string(p->id) + ":",  p->halite, p->ships.size(), p->dropoffs.size());
+            log::log("(Profitable ships) ", p->profitable_ships.size());
         }
         log::log("Hal percentile ", game_map->get_halite_percentile(0.5));
         log::log("Hal percentile ", game_map->get_halite_percentile(0.4));
-
-        int next_profitable_ships = 0;
-        for (auto ship : me->ships) {
-            if (ship.second->lifetime_hal > 1000) {
-                next_profitable_ships++;
-            }
-        }
-        profitable_ships = max(profitable_ships, next_profitable_ships);
-        max_total_ships = max(max_total_ships, (int)me->ships.size());
-
-        log::log("Profitable Ships: ", profitable_ships);
-        log::log("Non-Profitable Ships: ", max_total_ships - profitable_ships);
+        log::log("Profitable Ships: ", me->profitable_ships.size());
+        log::log("EMA: ", Metrics::getHalPerShip());
+        log::log("EMA: ", Metrics::getHalPerShip() / remaining_turns);
 
         if (end_turn) {
             break;

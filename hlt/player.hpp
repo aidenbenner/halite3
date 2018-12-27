@@ -7,12 +7,15 @@
 
 #include <memory>
 #include <unordered_map>
+#include <set>
 
 namespace hlt {
     struct Player {
         PlayerId id;
         std::shared_ptr<Shipyard> shipyard;
         Halite halite;
+
+        std::set<EntityId> profitable_ships;
         std::map<EntityId, std::shared_ptr<Ship>> ships;
         std::map<EntityId, std::shared_ptr<Dropoff>> dropoffs;
 

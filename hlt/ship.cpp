@@ -3,6 +3,7 @@
 #include "direction.hpp"
 #include "game_map.hpp"
 #include "game.hpp"
+#include "metrics.hpp"
 
 using namespace hlt;
 

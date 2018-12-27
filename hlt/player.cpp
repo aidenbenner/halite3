@@ -14,6 +14,10 @@ void hlt::Player::_update(int num_ships, int num_dropoffs, Halite halite) {
         else {
             nextShips[ship->id] = ship;
         }
+
+        if (nextShips[ship->id]->lifetime_hal > 1000) {
+            profitable_ships.insert(ship->id);
+        }
     }
     ships = nextShips;
 
@@ -23,6 +27,7 @@ void hlt::Player::_update(int num_ships, int num_dropoffs, Halite halite) {
         dropoffs[dropoff->id] = dropoff;
     }
 }
+
 
 std::shared_ptr<hlt::Player> hlt::Player::_generate() {
     PlayerId player_id;
