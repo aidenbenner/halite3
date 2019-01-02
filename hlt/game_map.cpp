@@ -842,9 +842,11 @@ bool GameMap::should_collide(Position position, Ship *ship) {
     if (ship->halite > 700) return false;
 
     // estimated future value of this ship
-    //if (ship->halite + Metrics::getHalPerShip() > enemy->halite) {
-    //    return false;
-    //}
+    if (game->players.size() == 4) {
+        if (ship->halite + Metrics::getHalPerShip() > enemy->halite) {
+            return false;
+        }
+    }
 
     Ship *s = get_closest_ship(position, game->players, {ship, enemy});
     if (s == nullptr) return false;
@@ -870,16 +872,18 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     int turns_back = calculate_distance(dest, shipyard);
     int turns = max(1, turns_to + turns_back);
 
-    //int enemies = enemies_around_point(dest, 4);
+    int enemies = enemies_around_point(dest, 4);
 
     int friends = friends_around_point(dest, 4);
+
+    /*
     for (auto d : ALL_CARDINALS) {
         if (at(normalize(dest.directional_offset(d)))->halite > 1000) {
             halite += 1000;
         }
-    }
+    }*/
 
-    if (at(dest)->occupied_by_not(pid) && is_1v1) {
+    if (at(dest)->occupied_by_not(pid)) {
         if (should_collide(dest, s)) {
             halite += 2 * at(dest)->ship->halite;
         }
@@ -888,7 +892,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     bool inspired = false;
     if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
         if (is_1v1 && turns_to < 6) {
-            halite += halite * friends / 25.0;
+            halite += halite * (friends - enemies) / 5.0;
             inspired = true;
         }
         else if (!is_1v1) {
