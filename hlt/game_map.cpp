@@ -301,12 +301,6 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 did_break = true;
                 break;
             }
-            // assuming we reach 1000 now is it possible to beat the current best.
-            /*
-            if ((1000 - starting_halite) / turns < costMp[first_move]) {
-                did_break = true;
-                break;
-            }*/
         }
         int dest_halite = at(dest)->halite * 0.25;
         int remaining_hal = at(dest)->halite * 0.75;
@@ -916,6 +910,10 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     //to_cost = 0;
     //int avg_hal = avg_around_point(dest, 1);
     //home_cost = 0;
+    int curr_hal = s->halite;
+    if (halite + curr_hal > 1000) {
+        halite = 1000 - curr_hal;
+    }
     int c = halite - to_cost;
     double out = (c) / ((double)turns);
     if (is_1v1) {
