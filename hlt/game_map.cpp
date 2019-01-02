@@ -681,7 +681,13 @@ vector<Direction> GameMap::minCostOptions(VVP pos, Position start, Position dest
     vector<Direction> opts;
     opts.push_back(move);
     auto others = get_unsafe_moves(start, dest);
-    opts.insert(opts.end(), others.begin(), others.end());
+    for (auto o : others) {
+        bool found = false;
+        for (auto p : opts) {
+            if (o == p) found = true;
+        }
+        if (!found) opts.push_back(o);
+    }
     return opts;
 }
 
@@ -841,6 +847,7 @@ bool GameMap::should_collide(Position position, Ship *ship) {
     //}
 
     Ship *s = get_closest_ship(position, game->players, {ship, enemy});
+    if (s == nullptr) return false;
     int enemies = enemies_around_point(position, 3);
     int friends = friends_around_point(position, 3);
     if (ship->halite > enemy->halite + 200)
@@ -863,23 +870,25 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     int turns_back = calculate_distance(dest, shipyard);
     int turns = max(1, turns_to + turns_back);
 
+    //int enemies = enemies_around_point(dest, 4);
 
-    if (turns_to <= 2) {
-        if (turns_back < width / 4) {
-            // should try and collide
-            if (s->halite <= 500) {
-                if (at(dest)->occupied_by_not(pid) && is_1v1) {
-                    if (s->halite + 200 < at(dest)->ship->halite) {
-                        halite += at(dest)->ship->halite;
-                    }
-                }
-            }
+    int friends = friends_around_point(dest, 4);
+    for (auto d : ALL_CARDINALS) {
+        if (at(normalize(dest.directional_offset(d)))->halite > 1000) {
+            halite += 1000;
+        }
+    }
+
+    if (at(dest)->occupied_by_not(pid) && is_1v1) {
+        if (should_collide(dest, s)) {
+            halite += 2 * at(dest)->ship->halite;
         }
     }
 
     bool inspired = false;
     if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
         if (is_1v1 && turns_to < 6) {
+            halite += halite * friends / 25.0;
             inspired = true;
         }
         else if (!is_1v1) {
