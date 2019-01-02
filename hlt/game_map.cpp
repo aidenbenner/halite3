@@ -241,14 +241,15 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
     map<Direction, int> costMp;
 
-    while (i < itrs) {
+    log::log("Walks Ship - ", order.ship->id);
+    while (i < itrs + 1) {
         if (time_bank != 0 && timer.elapsed() > time_bank) {
-            log::log("breaking caues time bank");
+            log::log("breaking cause time bank");
             break;
         }
         i++;
         int curr_halite = starting_halite;
-        int turns = 1;
+        double turns = 1;
 
         auto curr = start;
         Direction first_move = Direction::STILL;
@@ -260,11 +261,14 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         while (dest != curr) {
             path.push_back(curr);
             auto move = get_random_dir_towards(curr, dest);
+            if (curr_square_hal == 0 && move == Direction::STILL) {
+                move = get_unsafe_moves(curr, dest)[0];
+            }
             if (at(curr)->occupied_by_not(constants::PID)) {
                 int enemy_hal = at(curr)->ship->halite;
                 if (starting_halite + 100 < enemy_hal) {
                     if (game->players.size() == 4) {
-                        curr_halite += enemy_hal / 2;
+                        curr_halite += 0;
                     }
                     else {
                         curr_halite += enemy_hal;
@@ -279,6 +283,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 break;
             }
             if (curr_halite < curr_square_hal * 0.1 || move == Direction::STILL) {
+                move = Direction::STILL;
                 if (is_inspired(curr, constants::PID) || likely_inspired(curr, turns)) {
                     // log::log("is inspired");
                     curr_halite += 2 * curr_square_hal * 0.25;
@@ -297,7 +302,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 if (!costMp.count(first_move)) costMp[first_move] = -10;
             }
             turns += 1;
-            if (curr_halite >= 1000) {
+            if (curr_halite >= 900) {
                 did_break = true;
                 break;
             }
@@ -310,7 +315,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         }
         if (did_break) {
             turns--;
-            dest_halite  = 0;
+            dest_halite = 0;
         }
         double c = (dest_halite + curr_halite - starting_halite) / turns;
 
@@ -325,7 +330,6 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             c = fmax(c, (dest_halite + curr_halite - starting_halite) / (turns + i));
         }
 
-
         //log::log(i, calculate_distance(start, dest), curr_halite, turns, c, first_move);
         if (!costMp.count(first_move)) costMp[first_move] = c;
         costMp[first_move] = fmax(costMp[first_move], c);
@@ -339,7 +343,8 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
     for (auto d : costMp) {
         if (best_cost == 0) best_cost = 1;
-        order.add_dir_priority(d.first, 100 * pow(1e6, 1 - (d.second / best_cost)));
+        log::log("Dir ", d.first, d.second);
+        order.add_dir_priority(d.first, 100 * pow(1e4, 1 - (d.second / best_cost)));
     }
 
     return {best_move, best_cost, best_turns, best_path};
@@ -853,37 +858,11 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
                        int extra_turns, Game &g, double future_ship_val) {
     if (dest == shipyard) return 10000000;
 
-
     int halite = at(dest)->halite;
-    //int enemies = enemies_around_point(dest, 4);
-    //int friends = 1 + friends_around_point(dest, 4);
-
     int turns_to = calculate_distance(s->position, dest);
     int turns_back = calculate_distance(dest, shipyard);
     int turns = max(1, turns_to + turns_back);
 
-    // Enemy can reach first... should penalize targetting this
-    /*
-    Ship* enemy = closestEnemyShip(dest);
-    int turns_to_enemy = 100;
-    if (enemy != nullptr) {
-        turns_to_enemy = calculate_distance(enemy->position, dest);
-    }
-    if (turns_to_enemy < 3 + turns_to) {
-        halite *= 0.5;
-    }
-    else {
-        if (turns_to < 10 && turns_to - turns_to_enemy < 4 && turns_to - turns_to_enemy >= 0) {
-            halite *= 1.5;
-        }
-    }*/
-    // if you can make it there before the enemy just barely we should favour
-
-    //if (abs(turns_to_enemy_shipyard(g, dest) - turns_to_shipyard(g, dest)) < 5) {
-    //    halite *= 1.5;
-    //}
-
-    //if (turns_to > 0 && at(dest)->is_occupied(pid)) return 1000000;
 
     if (turns_to <= 2) {
         if (turns_back < width / 4) {
@@ -898,12 +877,13 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         }
     }
 
+    bool inspired = false;
     if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
         if (is_1v1 && turns_to < 6) {
-            halite *= 3;
+            inspired = true;
         }
         else if (!is_1v1) {
-            halite *= 3;
+            inspired = true;
         }
     }
 
@@ -911,14 +891,22 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     //int avg_hal = avg_around_point(dest, 1);
     //home_cost = 0;
     int curr_hal = s->halite;
-    if (halite + curr_hal > 1000) {
-        halite = 1000 - curr_hal;
-    }
-    int c = halite - to_cost;
-    double out = (c) / ((double)turns);
-    if (is_1v1) {
-        out -= num_inspired(dest, pid) / (double)turns;
-        // log::log(num_inspired(dest,pid));
+    double out;
+    int mined = 0;
+    for (int i = 0; i<5; i++) {
+        mined += halite * 0.25;
+        if (inspired) {
+            mined += halite * 0.5;
+        }
+        halite *= 0.75;
+        if (mined + curr_hal > 1000) {
+            mined = 1000 - mined;
+        }
+        int c = mined - to_cost;
+        out = (c) / ((double)turns + i);
+        if (is_1v1) {
+            out -= num_inspired(dest, pid) / (double)(turns + i);
+        }
     }
 
     return -out * 100;

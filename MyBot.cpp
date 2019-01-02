@@ -396,9 +396,9 @@ int main(int argc, char* argv[]) {
                 // game_map->addPlanned(0, walk.walk);
                 added.insert(ship->id);
                 claimed.insert(mdest);
+                //o.add_dir_priority(walk.bestdir, 1);
                 /*
                 o.setAllCosts(1e8);
-                o.add_dir_priority(walk.bestdir, 1);
 
                 int cost = 10;
                 for (auto d : options) {
