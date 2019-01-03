@@ -299,14 +299,14 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             if (curr_square_hal == 0 && move == Direction::STILL) {
                 move = get_unsafe_moves(curr, dest)[0];
             }
-            if (at(curr)->occupied_by_not(constants::PID)) {
+            if (at(curr)->occupied_by_not(constants::PID) && turns < 4) {
                 int enemy_hal = at(curr)->ship->halite;
-                if (starting_halite + 100 < enemy_hal) {
+                if (should_collide(curr, order.ship)) {
                     if (game->players.size() == 4) {
-                        curr_halite += 0;
+                        curr_halite += 4 * enemy_hal;
                     }
                     else {
-                        curr_halite += enemy_hal;
+                        curr_halite += 4 * enemy_hal;
                     }
                 }
                 else {
@@ -876,8 +876,11 @@ bool GameMap::should_collide(Position position, Ship* ship, Ship* enemy) {
     return false;
 }*/
 
-bool GameMap::should_collide(Position position, Ship *ship) {
-    auto enemy = at(position)->ship.get();
+bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
+    if (enemy == nullptr)
+        enemy = at(position)->ship.get();
+
+    if (enemy == nullptr) return true;
 
     if (ship->halite > 700) return false;
 
