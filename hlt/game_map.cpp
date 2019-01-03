@@ -892,8 +892,8 @@ bool GameMap::should_collide(Position position, Ship *ship) {
     if (s == nullptr) return false;
     int enemies = enemies_around_point(position, 3);
     int friends = friends_around_point(position, 3);
-    if (ship->halite > enemy->halite + 200)
-        return false;
+    //if (ship->halite > enemy->halite + 300)
+    //    return false;
 
     if (s->owner == constants::PID) {
         if (friends >= enemies) {
@@ -922,10 +922,8 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     }
 
     int diff = dist_to_enemy_yard - yard_dist;
-    if (diff >= 0 && diff <= 3 && halite > 100) {
-        //halite *= 2;
-        //turns_back /= 6;
-        //turns_to /= 6;
+    if (diff >= 0 && diff <= 3 && halite > 100 && game->turn_number > 60 && game->turn_number < 200) {
+       //halite *= 2.5;
     }
 
     int turns = pow(max(1, turns_to + turns_back), 1.0);
@@ -951,12 +949,14 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     }
 
     bool inspired = false;
+
     if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
-        if (is_1v1 && turns_to < 6) {
-            halite += halite * (1 + friends - enemies) / 5.0;
+        if (is_1v1 && turns_to < 7) {
+            halite += halite * (friends - enemies) / 9.0;
             inspired = true;
         }
-        else if (!is_1v1 && turns_to < 25) {
+        else if (!is_1v1) {
+            halite += halite * (friends) / 9.0;
             inspired = true;
         }
     }
@@ -965,7 +965,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     //int avg_hal = avg_around_point(dest, 1);
     //home_cost = 0;
     int curr_hal = s->halite;
-    double out;
+    double out = -1000;
     int mined = 0;
     for (int i = 0; i<5; i++) {
         mined += halite * 0.25;
@@ -976,11 +976,12 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         if (mined + curr_hal > 1000) {
             mined = 1000 - mined;
         }
-        int c = mined - to_cost;
-        out = (c) / ((double)turns + i);
+        int c = turns_to + mined - to_cost;
+        double cout = (c) / ((double)turns + i);
         if (is_1v1) {
-            out -= num_inspired(dest, pid) / (double)(turns + i);
+            cout -= num_inspired(dest, pid) / (double)(turns + i);
         }
+        out = max(cout, out);
     }
 
     return -out * 100;
@@ -1000,6 +1001,13 @@ int GameMap::num_inspired(Position p, PlayerId id) {
                 if (at(c)->occupied_by_not(id)) {
                     if (is_inspired(c, id, true)) {
                         count += 2 * 0.25 * at(c)->halite;
+                    }
+                }
+                if (is_inspired(p, constants::PID)) {
+                    if (at(c)->is_occupied(constants::PID)) {
+                        if (is_inspired(c, constants::PID)) {
+                            count -= 2 * 0.25 * at(c)->halite;
+                        }
                     }
                 }
             }
