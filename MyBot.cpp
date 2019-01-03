@@ -146,6 +146,14 @@ int main(int argc, char* argv[]) {
 
         int num_gathering_ships = 0;
 
+        // ships returning to each drop
+        map<Position, int> dropReturnCount;
+        for (auto s : me->ships) {
+            auto drop = game_map->closest_dropoff(s.second->position, &game);
+            if (!dropReturnCount.count(drop)) dropReturnCount[drop] = 0;
+            dropReturnCount[drop] += 1;
+        }
+
         for (const auto &ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             EntityId id = ship->id;
@@ -160,9 +168,10 @@ int main(int argc, char* argv[]) {
                 stateMp[id] = GATHERING;
                 num_gathering_ships++;
             }
+            auto drop = game_map->closest_dropoff(ship->position, &game);
             if (remaining_turns <
-                game_map->calculate_distance(ship->position, game_map->closest_dropoff(ship->position, &game))
-                + 0.3 * me->ships.size()) {
+                game_map->calculate_distance(ship->position, drop)
+                + 0.28 * dropReturnCount[drop]) {
                 stateMp[id] = SUPER_RETURN;
             }
             ship->state = stateMp[id];
