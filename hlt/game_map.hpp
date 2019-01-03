@@ -47,6 +47,10 @@ namespace hlt {
 
         std::map<Position, Position> closestDropMp;
 
+        std::map<Position, Position> closestEnemyDropMp;
+
+        Position closest_enemy_dropoff(Position pos, Game *g);
+
         Ship * get_closest_ship(Position pos, const vector<shared_ptr<Player>> &p, const vector<Ship*> &ignore);
 
         Ship * closestEnemyShip(Position pos);

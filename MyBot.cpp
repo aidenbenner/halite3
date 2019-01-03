@@ -190,9 +190,16 @@ int main(int argc, char* argv[]) {
                     curr_avg_halite = 9999999;
                     best_dropoff = ship.get();
                 }
+
+                bool tooCloseToEnemy = false;
+                if (!is_1v1) {
+                    auto enemyDrop = game_map->closest_enemy_dropoff(ship->position, &game);
+                    tooCloseToEnemy |= game_map->calculate_distance(ship->position, enemyDrop) <= 6;
+                }
                 if (remaining_turns > 60
                     && dist >= 15
                     && avg_halite > 130
+                    && !tooCloseToEnemy
                     && curr_dropoffs < expected_dropoffs) {
                     log::flog(log::Log{game.turn_number - 1, ship->position.x, ship->position.y, "could drop",
                                        "#00FFFF"});

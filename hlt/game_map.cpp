@@ -25,6 +25,37 @@ Position GameMap::closest_dropoff(Position pos, Game *g) {
     return closestDropMp[pos] = p;
 }
 
+Position GameMap::closest_enemy_dropoff(Position pos, Game *g) {
+    if (closestEnemyDropMp.count(pos)) return closestEnemyDropMp[pos];
+
+    Position out;
+    int outdist = 10000;
+    for (auto p : g->players) {
+        if (p->id == game->me->id) {
+            continue;
+        }
+        Position currcurrp = p->shipyard->position;
+        int m = g->game_map->calculate_distance(pos, currcurrp);
+
+        for (auto d : p->dropoffs) {
+            auto currp = d.second->position;
+            int currd = g->game_map->calculate_distance(pos,currp);
+
+            if (currd < m) {
+                m = currd;
+                currcurrp = currp;
+            }
+        }
+
+        if (m < outdist) {
+            outdist = m;
+            out = currcurrp;
+        }
+    }
+    return closestEnemyDropMp[pos] = out;
+}
+
+
 Ship * GameMap::get_closest_ship(Position pos, const vector<shared_ptr<Player>> &p, const vector<Ship*> &ignore) {
     int dist = 10000000;
     Ship* soj = nullptr;
@@ -71,6 +102,7 @@ void hlt::GameMap::_update() {
     closestFriendlyMemo.clear();
     closestEnemyMemo.clear();
 
+    closestEnemyDropMp.clear();
     closestDropMp.clear();
     hal_mp.clear();
     planned_route.clear();
@@ -233,6 +265,9 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         return {Direction::STILL, (double)at(dest)->halite * 0.25, 1};
     }
 
+    auto closest_enemy = closestEnemyShip(dest);
+    int turns_to_enemy = calculate_distance(closest_enemy->position, dest);
+
     vector<Position> best_path;
     Timer timer;
     timer.start();
@@ -317,6 +352,11 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             turns--;
             dest_halite = 0;
         }
+
+        if (abs(turns - turns_to_enemy) <= 2) {
+            dest_halite *= 1.5;
+        }
+
         double c = (dest_halite + curr_halite - starting_halite) / turns;
 
         // try 3 waits on the current square
@@ -852,8 +892,8 @@ bool GameMap::should_collide(Position position, Ship *ship) {
     if (s == nullptr) return false;
     int enemies = enemies_around_point(position, 3);
     int friends = friends_around_point(position, 3);
-    if (ship->halite > enemy->halite + 200)
-        return false;
+    //if (ship->halite > enemy->halite + 200)
+    //    return false;
 
     if (s->owner == constants::PID) {
         if (friends >= enemies) {
@@ -870,32 +910,53 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     int halite = at(dest)->halite;
     int turns_to = calculate_distance(s->position, dest);
     int turns_back = calculate_distance(dest, shipyard);
-    int turns = max(1, turns_to + turns_back);
 
     int enemies = enemies_around_point(dest, 4);
-
     int friends = friends_around_point(dest, 4);
 
-    /*
-    for (auto d : ALL_CARDINALS) {
-        if (at(normalize(dest.directional_offset(d)))->halite > 1000) {
-            halite += 1000;
-        }
+    int dist_to_enemy_yard = 100;
+    int yard_dist = calculate_distance(game->me->shipyard->position, dest);
+    for (auto p : game->players) {
+        if (p->id == game->me->id) continue;
+        min(dist_to_enemy_yard, calculate_distance(dest, p->shipyard->position));
+    }
+
+    int diff = dist_to_enemy_yard - yard_dist;
+    if (diff >= 0 && diff <= 3 && halite > 100) {
+        //halite *= 2;
+        //turns_back /= 6;
+        //turns_to /= 6;
+    }
+
+    int turns = pow(max(1, turns_to + turns_back), 1.0);
+
+    /*int dist_to_enemy = 10000;
+    auto closest_enemy = closestEnemyShip(dest);
+    if (closest_enemy != nullptr) {
+        dist_to_enemy = calculate_distance(dest, closest_enemy->position);
+    }
+
+    if (abs(turns_to - dist_to_enemy) <= 3) {
+        halite *= 1.5;
     }*/
 
     if (at(dest)->occupied_by_not(pid)) {
         if (should_collide(dest, s)) {
             halite += 2 * at(dest)->ship->halite;
+        } else {
+            if (!is_1v1) {
+                return 1000000;
+            }
         }
     }
 
     bool inspired = false;
     if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
         if (is_1v1 && turns_to < 6) {
-            halite += halite * (friends - enemies) / 5.0;
+            halite += halite * (1 + friends - enemies) / 5.0;
             inspired = true;
         }
-        else if (!is_1v1) {
+        else if (!is_1v1 && turns_to < 25) {
             inspired = true;
         }
     }
