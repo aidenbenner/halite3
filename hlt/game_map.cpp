@@ -892,8 +892,8 @@ bool GameMap::should_collide(Position position, Ship *ship) {
     if (s == nullptr) return false;
     int enemies = enemies_around_point(position, 3);
     int friends = friends_around_point(position, 3);
-    //if (ship->halite > enemy->halite + 200)
-    //    return false;
+    if (ship->halite > enemy->halite + 200)
+        return false;
 
     if (s->owner == constants::PID) {
         if (friends >= enemies) {
