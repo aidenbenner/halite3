@@ -32,6 +32,7 @@ namespace hlt {
         GATHERING,
         RETURNING,
         SUPER_RETURN,
+        DROPOFF,
     };
 
     struct BFSR {

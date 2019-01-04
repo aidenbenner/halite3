@@ -78,12 +78,12 @@ Ship * GameMap::get_closest_ship(Position pos, const vector<shared_ptr<Player>> 
 
 static map<Position, Ship*> closestFriendlyMemo;
 static map<Position, Ship*> closestEnemyMemo;
-Ship* GameMap::closestFriendlyShip(hlt::Position pos) {
+Ship* GameMap::closestEnemyShip(hlt::Position pos) {
     if (closestFriendlyMemo.count(pos)) return closestFriendlyMemo[pos];
     return closestFriendlyMemo[pos] = get_closest_ship(pos, game->getEnemies(), {});
 }
 
-Ship* GameMap::closestEnemyShip(hlt::Position pos) {
+Ship* GameMap::closestFriendlyShip(hlt::Position pos) {
     if (closestEnemyMemo.count(pos)) return closestEnemyMemo[pos];
     return closestEnemyMemo[pos] = get_closest_ship(pos, {game->me}, {});
 }
@@ -265,6 +265,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         return {Direction::STILL, (double)at(dest)->halite * 0.25, 1};
     }
 
+    //TODO retry this
     auto closest_enemy = closestEnemyShip(dest);
     int turns_to_enemy = calculate_distance(closest_enemy->position, dest);
 
