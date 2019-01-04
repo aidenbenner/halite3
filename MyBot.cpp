@@ -199,7 +199,7 @@ int main(int argc, char* argv[]) {
 
         set<EntityId> given_order;
         if (DROPOFFS_ENABLED) {
-            int expected_dropoffs = me->ships.size() / 15 + 1;
+            int expected_dropoffs = me->ships.size() / 12 + 1;
             int curr_dropoffs = me->dropoffs.size();
 
             Position best_drop_location;
