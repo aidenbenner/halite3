@@ -304,10 +304,10 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 int enemy_hal = at(curr)->ship->halite;
                 if (should_collide(curr, order.ship)) {
                     if (game->players.size() == 4) {
-                        curr_halite += 1.5 * enemy_hal;
+                        curr_halite += enemy_hal / 2;
                     }
                     else {
-                        curr_halite += enemy_hal / 2;
+                        curr_halite += enemy_hal;
                     }
                 }
             }
@@ -897,8 +897,8 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     if (s == nullptr) return false;
     int enemies = enemies_around_point(position, 3);
     int friends = friends_around_point(position, 3);
-    //if (ship->halite > enemy->halite + 300)
-    //    return false;
+    if (ship->halite > enemy->halite + 300)
+        return false;
 
     if (s->owner == constants::PID) {
         if (friends >= enemies) {
@@ -945,7 +945,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
 
     if (at(dest)->occupied_by_not(pid)) {
         if (should_collide(dest, s)) {
-            halite += 2 * at(dest)->ship->halite;
+            halite += at(dest)->ship->halite;
         } else {
             if (!is_1v1) {
                 return 1000000;
