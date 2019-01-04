@@ -216,15 +216,17 @@ int main(int argc, char* argv[]) {
                         float avg_halite = game_map->avg_around_point(curr, 4);
 
                         bool tooCloseToEnemy = false;
+                        auto enemyDrop = game_map->closest_enemy_dropoff(curr, &game);
+                        int enemyDist = game_map->calculate_distance(curr, enemyDrop);
                         if (!is_1v1) {
-                            auto enemyDrop = game_map->closest_enemy_dropoff(curr, &game);
-                            tooCloseToEnemy |= game_map->calculate_distance(curr, enemyDrop) <= 6;
+                            tooCloseToEnemy |= enemyDist <= 6;
                         }
 
                         if (remaining_turns > 60
                             && avg_halite > 130
                             && !tooCloseToEnemy
-                            && curr_dropoffs < expected_dropoffs) {
+                            && curr_dropoffs < expected_dropoffs
+                            && drop_dist - enemyDist < 15) {
                             log::flog(log::Log{game.turn_number - 1, curr.x, curr.y, "could drop" + to_string(avg_halite), "#00FFFF"});
                             if (curr_avg_halite < avg_halite) {
                                 auto closest_friend = game_map->closestFriendlyShip(curr);

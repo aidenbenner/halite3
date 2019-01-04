@@ -265,7 +265,6 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         return {Direction::STILL, (double)at(dest)->halite * 0.25, 1};
     }
 
-    //TODO retry this
     auto closest_enemy = closestEnemyShip(dest);
     int turns_to_enemy = calculate_distance(closest_enemy->position, dest);
 
@@ -356,8 +355,8 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             dest_halite = 0;
         }
 
-        if (abs(turns - turns_to_enemy) <= 2) {
-            dest_halite *= 1.5;
+        if (abs(turns - turns_to_enemy) <= 1) {
+            dest_halite *= 2.5;
         }
 
         double c = (dest_halite + curr_halite - starting_halite) / turns;
