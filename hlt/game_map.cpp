@@ -299,23 +299,16 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
             if (curr_square_hal == 0 && move == Direction::STILL) {
                 move = get_unsafe_moves(curr, dest)[0];
             }
-            if (at(curr)->occupied_by_not(constants::PID) && turns < 4) {
+            if (at(curr)->occupied_by_not(constants::PID)) {
                 int enemy_hal = at(curr)->ship->halite;
                 if (should_collide(curr, order.ship)) {
                     if (game->players.size() == 4) {
-                        curr_halite += 4 * enemy_hal;
+                        curr_halite += 1.5 * enemy_hal;
                     }
                     else {
-                        curr_halite += 4 * enemy_hal;
+                        curr_halite += enemy_hal / 2;
                     }
                 }
-                else {
-                    if (game->players.size() == 4) {
-                        curr_halite += 0;
-                    }
-                }
-                did_break = true;
-                break;
             }
             if (curr_halite < curr_square_hal * 0.1 || move == Direction::STILL) {
                 move = Direction::STILL;
@@ -342,6 +335,15 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 break;
             }
         }
+        if (at(curr)->occupied_by_not(constants::PID)) {
+            int enemy_hal = at(curr)->ship->halite;
+            if (game->players.size() == 4) {
+                curr_halite += enemy_hal;
+            }
+            else {
+                curr_halite += enemy_hal;
+            }
+        }
         int dest_halite = at(dest)->halite * 0.25;
         int remaining_hal = at(dest)->halite * 0.75;
         turns++;
@@ -359,7 +361,6 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
         double c = (dest_halite + curr_halite - starting_halite) / turns;
 
-        // try 3 waits on the current square
         for (int i = 1; i<=6; i++) {
             if (did_break) break;
             dest_halite += 0.25 * remaining_hal;

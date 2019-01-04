@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv94");
+    game.ready("adbv111");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
     Metrics::init(&game);
