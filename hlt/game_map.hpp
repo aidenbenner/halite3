@@ -150,6 +150,8 @@ namespace hlt {
 
         int num_inspired(Position p, PlayerId id);
 
+        std::map<pair<Position, int>, float> avgAroundPointMemo;
+
         bool should_collide(Position position, Ship *ship, Ship *enemy=nullptr);
 
         double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1,

@@ -96,6 +96,7 @@ void hlt::GameMap::_update() {
         }
     }
 
+    avgAroundPointMemo.clear();
     enemies_around_point_memo.clear();
     friends_around_point_memo.clear();
     likelyInspiredMemo.clear();
@@ -917,8 +918,8 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
 
     int shipyard_bonus = avg_around_point(shipyard, 5);
     if (shipyard_bonus > 135) {
-        halite *= 3;
-        turns_to /= 6.0;
+        halite *= 5;
+        //turns_to /= 6.0;
     }
 
     int enemies = enemies_around_point(dest, 4);
@@ -943,12 +944,12 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     auto closest_enemy = closestEnemyShip(dest);
     if (closest_enemy != nullptr) {
         dist_to_enemy = calculate_distance(dest, closest_enemy->position);
-    }*/
+    }
     for (auto d : ALL_DIRS) {
         if (at(dest.directional_offset(d))->halite > 1000) {
             halite += 1000;
         }
-    }
+    }*/
 
     /*
     if (abs(turns_to - dist_to_enemy) <= 3) {
@@ -1104,6 +1105,8 @@ int GameMap::sum_around_point(Position p, int r) {
 }
 
 float GameMap::avg_around_point(Position p, int r) {
+    auto pa = make_pair(p, r);
+    if (avgAroundPointMemo.count(pa)) return avgAroundPointMemo[pa];
     int sum = 0;
     int count = 0;
     for (int i = 0; i<2 * r; i++) {
@@ -1116,7 +1119,7 @@ float GameMap::avg_around_point(Position p, int r) {
             }
         }
     }
-    return sum / (float)count;
+    return avgAroundPointMemo[pa] = sum / (float)count;
 }
 
 vector<Position> GameMap::points_around_pos(Position p, int r) {
