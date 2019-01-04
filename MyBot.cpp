@@ -212,8 +212,18 @@ int main(int argc, char* argv[]) {
                     Position curr{x, y};
                     if (game_map->at(curr)->has_structure()) continue;
                     int drop_dist = game_map->calculate_distance(curr, game_map->closest_dropoff(curr, &game));
-                    if (drop_dist >= 15) {
-                        float avg_halite = game_map->avg_around_point(curr, 4) - sqrt(drop_dist) / 1000.0;
+
+                    int dist_to_enemy_shipyard = 10000;
+                    for (auto player : game.getEnemies()) {
+                        dist_to_enemy_shipyard = min(dist_to_enemy_shipyard, game_map->calculate_distance(curr, player->shipyard->position));
+                    }
+
+                    int dist_to_shipyard = game_map->calculate_distance(me->shipyard->position, curr);
+
+                    if (drop_dist >= 15
+                        && curr_dropoffs < expected_dropoffs
+                        && remaining_turns > 120) {
+                        float avg_halite = game_map->avg_around_point(curr, 4) - sqrt(dist_to_shipyard) / 1000.0;
 
                         bool tooCloseToEnemy = false;
                         auto enemyDrop = game_map->closest_enemy_dropoff(curr, &game);
@@ -222,11 +232,9 @@ int main(int argc, char* argv[]) {
                             tooCloseToEnemy |= enemyDist <= 6;
                         }
 
-                        if (remaining_turns > 120
-                            && avg_halite > 140
+                        if (avg_halite > 140
                             && !tooCloseToEnemy
-                            && curr_dropoffs < expected_dropoffs
-                            && drop_dist - enemyDist < 15) {
+                            && dist_to_shipyard - dist_to_enemy_shipyard <= 10) {
                             log::flog(log::Log{game.turn_number - 1, curr.x, curr.y, "could drop" + to_string(avg_halite), "#00FFFF"});
                             if (curr_avg_halite < avg_halite) {
                                 auto closest_friend = game_map->closestFriendlyShip(curr);

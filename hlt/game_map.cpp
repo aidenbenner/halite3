@@ -892,17 +892,25 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
         }
     }
 
-    Ship *s = get_closest_ship(position, game->players, {ship, enemy});
-    if (s == nullptr) return false;
+    Ship *cenemy = get_closest_ship(position, game->getEnemies(), {ship, enemy});
+    Ship *pal = get_closest_ship(position, {game->me}, {ship, enemy});
+    if (cenemy == nullptr) return true;
+    if (pal == nullptr) return true;
+    // check if pal can gather
+    if (pal->halite > 500) return false;
+
+    int paldist = calculate_distance(pal->position, position);
+    int enemydist = calculate_distance(cenemy->position, position);
+
+    if (enemydist < paldist + 2) return false;
+
     int enemies = enemies_around_point(position, 3);
     int friends = friends_around_point(position, 3);
     if (ship->halite > enemy->halite + 300)
         return false;
 
-    if (s->owner == constants::PID) {
-        if (friends >= enemies) {
-            return true;
-        }
+    if (friends >= enemies) {
+        return true;
     }
     return false;
 }
