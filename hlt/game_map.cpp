@@ -356,7 +356,6 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         }
 
         if (abs(turns - turns_to_enemy) <= 1) {
-            dest_halite *= 2.5;
         }
 
         double c = (dest_halite + curr_halite - starting_halite) / turns;
@@ -911,9 +910,16 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
                        int extra_turns, Game &g, double future_ship_val) {
     if (dest == shipyard) return 10000000;
 
+
     int halite = at(dest)->halite;
     int turns_to = calculate_distance(s->position, dest);
     int turns_back = calculate_distance(dest, shipyard);
+
+    int shipyard_bonus = avg_around_point(shipyard, 5);
+    if (shipyard_bonus > 135) {
+        halite *= 3;
+        turns_to /= 6.0;
+    }
 
     int enemies = enemies_around_point(dest, 4);
     int friends = friends_around_point(dest, 4);
@@ -932,12 +938,19 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
 
     int turns = pow(max(1, turns_to + turns_back), 1.0);
 
-    /*int dist_to_enemy = 10000;
+    /*
+    int dist_to_enemy = 10000;
     auto closest_enemy = closestEnemyShip(dest);
     if (closest_enemy != nullptr) {
         dist_to_enemy = calculate_distance(dest, closest_enemy->position);
+    }*/
+    for (auto d : ALL_DIRS) {
+        if (at(dest.directional_offset(d))->halite > 1000) {
+            halite += 1000;
+        }
     }
 
+    /*
     if (abs(turns_to - dist_to_enemy) <= 3) {
         halite *= 1.5;
     }*/
@@ -956,7 +969,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
 
     if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
         if (is_1v1 && turns_to < 7) {
-            halite += halite * (friends - enemies) / 9.0;
+            halite += halite * (friends - enemies) / 4.0;
             inspired = true;
         }
         else if (!is_1v1) {

@@ -213,7 +213,7 @@ int main(int argc, char* argv[]) {
                     if (game_map->at(curr)->has_structure()) continue;
                     int drop_dist = game_map->calculate_distance(curr, game_map->closest_dropoff(curr, &game));
                     if (drop_dist >= 15) {
-                        float avg_halite = game_map->avg_around_point(curr, 4);
+                        float avg_halite = game_map->avg_around_point(curr, 4) - sqrt(drop_dist);
 
                         bool tooCloseToEnemy = false;
                         auto enemyDrop = game_map->closest_enemy_dropoff(curr, &game);
@@ -222,8 +222,8 @@ int main(int argc, char* argv[]) {
                             tooCloseToEnemy |= enemyDist <= 6;
                         }
 
-                        if (remaining_turns > 60
-                            && avg_halite > 130
+                        if (remaining_turns > 120
+                            && avg_halite > 140
                             && !tooCloseToEnemy
                             && curr_dropoffs < expected_dropoffs
                             && drop_dist - enemyDist < 15) {
