@@ -232,7 +232,7 @@ int main(int argc, char* argv[]) {
                             tooCloseToEnemy |= enemyDist <= 6;
                         }
 
-                        if (avg_halite > 140
+                        if (avg_halite > 180
                             && !tooCloseToEnemy
                             && dist_to_shipyard - dist_to_enemy_shipyard <= 10) {
                             log::flog(log::Log{game.turn_number - 1, curr.x, curr.y, "could drop" + to_string(avg_halite), "#00FFFF"});
@@ -240,9 +240,9 @@ int main(int argc, char* argv[]) {
                                 auto closest_friend = game_map->closestFriendlyShip(curr);
                                 //auto closest_enemy = game_map->closestEnemyShip(curr);
                                 //int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
-                                //int friendly_dist = game_map->calculate_distance(closest_friend->position, curr);
+                                int friendly_dist = game_map->calculate_distance(closest_friend->position, curr);
                                 int enemies = game_map->enemies_around_point(curr, 4);
-                                if (enemies < 6) {
+                                if (friendly_dist < 10 && enemies < 6) {
                                     if (closest_friend != nullptr) {
                                         curr_avg_halite = avg_halite;
                                         best_dropoff = closest_friend;
@@ -472,16 +472,7 @@ int main(int argc, char* argv[]) {
                 // game_map->addPlanned(0, walk.walk);
                 added.insert(ship->id);
                 claimed.insert(mdest);
-                //o.add_dir_priority(walk.bestdir, 1);
-                /*
-                o.setAllCosts(1e8);
-
-                int cost = 10;
-                for (auto d : options) {
-                    o.add_dir_priority(d, cost);
-                    cost *= 10;
-                }*/
-                // o.add_dir_priority(Direction::STILL, 1e5);
+                o.add_dir_priority(walk.bestdir, 1);
 
                 ordersMap[ship->id] = o;
             }
@@ -533,7 +524,7 @@ int main(int argc, char* argv[]) {
         }
 
         log::log("Starting resolve phase", turnTimer.elapsed());
-        vector<vector<double>> directionCostMatrix(me->ships.size(), vector<double>(ind, 1e10));
+        vector<vector<double>> directionCostMatrix(me->ships.size(), vector<double>(ind, 1e30));
         int i = 0;
         for (auto s : me->ships) {
             auto ship = s.second;
@@ -559,7 +550,11 @@ int main(int argc, char* argv[]) {
             }
 
             for (auto d : ship->GetBannedDirs(game_map.get(), response, game)) {
-                ordersMap[ship->id].add_dir_priority(d, 1e9);
+                double cost = 1e12;
+                if (d == Direction::STILL) {
+                    cost = 1e13;
+                }
+                ordersMap[ship->id].add_dir_priority(d, cost);
             }
 
             auto drop = game_map->closest_dropoff(ship->position, &game);
@@ -601,7 +596,7 @@ int main(int argc, char* argv[]) {
             }
             int ind = dirShipMapping[i];
             Position move = indToPos[ind];
-            auto dir = game_map->getDirectDiff(game_map->normalize(ship->position), move);
+            auto dir = game_map->getDirectDiff(game_map->normalize(ship->position), game_map->normalize(move));
 
             auto state = stateMp[ship->id];
             if (state == SUPER_RETURN) {

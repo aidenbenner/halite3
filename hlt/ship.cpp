@@ -36,6 +36,7 @@ vector<Direction> Ship::GetBannedDirs(GameMap *game_map, EnemyResponse type, Gam
     return out;
 }
 
+// TODO... should weight squares by how bad they are.. e.g. should prefer walking into opponent with 300 than 3
 vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Game &g) {
     // Check if we can move
     if (halite < game_map->at(this)->cost()) {
@@ -84,7 +85,7 @@ vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Ga
                     }*/
                 case SMART:
                     // in a 5 move radius who has more ships?
-                    if (g.game_map->should_collide(pos, this)) {
+                    if (g.game_map->should_collide(pos, this, enemy)) {
                         out.push_back(d);
                     }
                     break;

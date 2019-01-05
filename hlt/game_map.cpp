@@ -56,17 +56,20 @@ Position GameMap::closest_enemy_dropoff(Position pos, Game *g) {
 }
 
 
+// Gets the closest ship... in case of a tie uses the ship with least halite.
 Ship * GameMap::get_closest_ship(Position pos, const vector<shared_ptr<Player>> &p, const vector<Ship*> &ignore) {
     int dist = 10000000;
+    int curr_hal = 10000;
     Ship* soj = nullptr;
     for (auto player : p) {
         for (auto s : player->ships) {
             int curr =  calculate_distance(pos, s.second->position);
-            if (curr < dist) {
+            if (curr < dist || (curr == dist && s.second->halite < curr_hal)) {
                 bool should_ignore = false;
                 for (auto ig : ignore) {
                     if (ig == s.second.get()) should_ignore = true;
                 }
+                curr_hal = s.second->halite;
                 if (should_ignore) continue;
                 dist = curr;
                 soj = s.second.get();
@@ -275,9 +278,8 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
     int itrs = min(500, calculate_distance(start, dest) * 50);
     int i = 0;
 
-    map<Direction, int> costMp;
+    map<Direction, double> costMp;
 
-    log::log("Walks Ship - ", order.ship->id);
     while (i < itrs + 1) {
         if (time_bank != 0 && timer.elapsed() > time_bank) {
             log::log("breaking cause time bank");
@@ -297,9 +299,10 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         while (dest != curr) {
             path.push_back(curr);
             auto move = get_random_dir_towards(curr, dest);
+            /*
             if (curr_square_hal == 0 && move == Direction::STILL) {
                 move = get_unsafe_moves(curr, dest)[0];
-            }
+            }*/
             if (at(curr)->occupied_by_not(constants::PID)) {
                 int enemy_hal = at(curr)->ship->halite;
                 if (should_collide(curr, order.ship)) {
@@ -384,8 +387,9 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
     for (auto d : costMp) {
         if (best_cost == 0) best_cost = 1;
-        log::log("Dir ", d.first, d.second);
-        order.add_dir_priority(d.first, 100 * pow(1e4, 1 - (d.second / best_cost)));
+        order.add_dir_priority(d.first, 100 * pow(1e4, 1.0 - ((double)d.second / (double)best_cost)));
+        //log::log("Walks", order.ship->id, d.first, d.second, 1.0 - ((double)d.second / (double)best_cost));
+        //log::log("Best cost", best_cost);
     }
 
     return {best_move, best_cost, best_turns, best_path};
@@ -639,10 +643,8 @@ vector<Direction> GameMap::plan_min_cost_route(VVP parents, int starting_halite,
     VC<Position> path = traceBackPath(parents, start, dest);
     if (path.back() == Position{-1, -1}) {
         path = random_walk(starting_halite, start, dest);
-        for (auto p : path) {
-            log::log(p);
-        }
     }
+
     assert(path[0] == start);
     assert(path.back() == dest);
 
@@ -808,7 +810,7 @@ Ship* GameMap::enemy_in_range(Position p, PlayerId pl, bool on_square) {
     int mhal = 100000;
     Ship* out = nullptr;
     for (int i = 0; i<4; i++) {
-        auto po = p.directional_offset(ALL_CARDINALS[i]);
+        auto po = normalize(p.directional_offset(ALL_CARDINALS[i]));
         if (at(po)->occupied_by_not(pl)) {
             auto ship = at(po)->ship.get();
             if (ship->halite < mhal) {
@@ -883,7 +885,11 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
 
     if (enemy == nullptr) return true;
 
+    int hal_on_square = at(position)->halite;
+    int enemy_hal = hal_on_square + enemy->halite;
     if (ship->halite > 700) return false;
+    if (enemy_hal < 400) return false;
+
 
     // estimated future value of this ship
     if (game->players.size() == 4) {
@@ -894,19 +900,22 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
 
     Ship *cenemy = get_closest_ship(position, game->getEnemies(), {ship, enemy});
     Ship *pal = get_closest_ship(position, {game->me}, {ship, enemy});
+
     if (cenemy == nullptr) return true;
-    if (pal == nullptr) return true;
+    if (pal == nullptr) return false;
+
+    int collision_hal = cenemy->halite + pal->halite + hal_on_square;
+
     // check if pal can gather
-    if (pal->halite > 500) return false;
+    if (pal->halite + collision_hal > 1200) return false;
 
     int paldist = calculate_distance(pal->position, position);
     int enemydist = calculate_distance(cenemy->position, position);
-
-    if (enemydist < paldist + 2) return false;
+    if (paldist > enemydist) return false;
 
     int enemies = enemies_around_point(position, 3);
     int friends = friends_around_point(position, 3);
-    if (ship->halite > enemy->halite + 300)
+    if (ship->halite > enemy_hal)
         return false;
 
     if (friends >= enemies) {
@@ -925,8 +934,8 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     int turns_back = calculate_distance(dest, shipyard);
 
     int shipyard_bonus = avg_around_point(shipyard, 5);
-    if (shipyard_bonus > 135) {
-        halite *= 5;
+    if (shipyard_bonus > 155) {
+        halite *= 3;
         //turns_to /= 6.0;
     }
 
