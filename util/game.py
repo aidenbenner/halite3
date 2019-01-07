@@ -47,7 +47,7 @@ print('Running with seed %s' % seed)
 if play_self:
     os.system('./halite --replay-directory replays/ -vvv --width %s --height %s "./MyBot %s" "./MyBot %s"' % (width, width, bot_arg_str, bot_arg_str))
 elif p4:
-    os.system('./halite --replay-directory replays/ -vvv --width %s --height %s "./MyBot %s" "./bots/benchmark %s" "./bots/benchmark %s" "./bots/benchmark %s"' % (width, width, bot_arg_str, bot_arg_str, bot_arg_str, bot_arg_str))
+    os.system('./halite --replay-directory replays/ -vvv --width %s --height %s "./MyBot %s" "./bots/benchmark %s" "./bots/benchmark %s" "./MyBot %s"' % (width, width, bot_arg_str, bot_arg_str, bot_arg_str, bot_arg_str))
 else:
     os.system('./halite --replay-directory replays/ -vvv --width %s --height %s "./MyBot %s" "./bots/benchmark %s"' % (width, width, bot_arg_str, bot_arg_str))
 os.system("ps aux | grep -i './MyBot\\|./bots/' | awk '{print $2}' | xargs sudo kill -9")

@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv113");
+    game.ready("adbv121");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
     Metrics::init(&game);
@@ -118,6 +118,7 @@ int main(int argc, char* argv[]) {
 
         shared_ptr<Player> me = game.me;
         shared_ptr<Player> opponent = game.players[0];
+        int drop_save_amount = 0;
 
         if (opponent->id == me->id)
             opponent = game.players[1];
@@ -236,15 +237,18 @@ int main(int argc, char* argv[]) {
                             && !tooCloseToEnemy
                             && dist_to_shipyard - dist_to_enemy_shipyard <= 10) {
                             log::flog(log::Log{game.turn_number - 1, curr.x, curr.y, "could drop" + to_string(avg_halite), "#00FFFF"});
-                            if (curr_avg_halite < avg_halite) {
-                                auto closest_friend = game_map->closestFriendlyShip(curr);
+                            auto closest_friend = game_map->closestFriendlyShip(curr);
+                            if (closest_friend == nullptr) continue;
+                            int friendly_dist = game_map->calculate_distance(closest_friend->position, curr);
+                            double cost = game_map->sum_around_point(curr, 4) / (2.0 + friendly_dist);
+                            if (curr_avg_halite < cost) {
                                 //auto closest_enemy = game_map->closestEnemyShip(curr);
                                 //int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
-                                int friendly_dist = game_map->calculate_distance(closest_friend->position, curr);
                                 int enemies = game_map->enemies_around_point(curr, 4);
-                                if (friendly_dist < 10 && enemies < 6) {
+                                int friends = game_map->friends_around_point(curr, 4);
+                                if ((friends - enemies) >= -2) {
                                     if (closest_friend != nullptr) {
-                                        curr_avg_halite = avg_halite;
+                                        curr_avg_halite = cost;
                                         best_dropoff = closest_friend;
                                         best_drop_location = curr;
                                     }
@@ -286,6 +290,7 @@ int main(int argc, char* argv[]) {
                 ordersMap[best_dropoff->id] = o;
 
                 save_for_drop = true;
+                drop_save_amount = 4000 - best_dropoff->halite + 100 - game_map->at(best_drop_location)->halite;
                 if (return_cash * 0.8 + me->halite + game_map->at(best_drop_location)->halite + best_dropoff->halite > 4000) {
                     auto ship = best_dropoff;
                     me->dropoffs[(int) -best_dropoff->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x,
@@ -622,7 +627,7 @@ int main(int argc, char* argv[]) {
         auto shipyard_pos = me->shipyard->position;
         int save_to = 1000;
         if (save_for_drop) {
-            save_to += constants::DROPOFF_COST;
+            save_to += drop_save_amount;
         }
 
         int ship_target = 10;

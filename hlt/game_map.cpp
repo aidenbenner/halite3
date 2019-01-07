@@ -404,7 +404,56 @@ Direction GameMap::get_random_dir_towards(Position start, Position end) {
     return moves[rand() % moves.size()];
 }
 
+
 static bool visited[64][64];
+/*
+BFSR GameMap::BFSToDrop(Position source) {
+    for (int i = 0; i<64; i++) {
+        for (int k = 0; k<64; k++) {
+            visited[i][k] = false;
+        }
+    }
+
+    int def = 1e8;
+
+    vector<vector<int>> dist(width,vector<int>(height, def));
+    vector<vector<Position>> parent(width,vector<Position>(height, {-1, -1}));
+    vector<vector<int>> turns(width, vector<int>(height, 1e9));
+
+    dist[source.x][source.y] = 0;
+    turns[source.x][source.y] = 1;
+
+    vector<pair<int, Position>> edge_pq;
+    vector<Position> frontier;
+    vector<Position> next;
+    next.reserve(200);
+    frontier.reserve(200);
+    next.push_back(source);
+    while(!next.empty()) {
+        std::swap(next, frontier);
+        next.clear();
+        while(!frontier.empty()) {
+            auto p = frontier.back();
+            frontier.pop_back();
+
+            if (visited[p.x][p.y]) {
+                continue;
+            }
+
+            visited[p.x][p.y] = true;
+
+            for (auto d : ALL_CARDINALS) {
+                auto f = normalize(p.directional_offset(d));
+                if (!visited[f.x][f.y]) {
+                    next.push_back(f);
+                    continue;
+                }
+            }
+        }
+    }
+    return BFSR{dist, parent, turns};
+}*/
+
 BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
     // dfs out of source to the entire map
     for (int i = 0; i<64; i++) {
@@ -883,6 +932,9 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     if (enemy == nullptr)
         enemy = at(position)->ship.get();
 
+    if (at(position)->has_structure())
+        return at(position)->structure->owner == constants::PID;
+
     if (enemy == nullptr) return true;
 
     int hal_on_square = at(position)->halite;
@@ -892,11 +944,12 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
 
 
     // estimated future value of this ship
+    /*
     if (game->players.size() == 4) {
         if (ship->halite + Metrics::getHalPerShip() > enemy->halite) {
             return false;
         }
-    }
+    }*/
 
     Ship *cenemy = get_closest_ship(position, game->getEnemies(), {ship, enemy});
     Ship *pal = get_closest_ship(position, {game->me}, {ship, enemy});
@@ -928,20 +981,35 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
                        int extra_turns, Game &g, double future_ship_val) {
     if (dest == shipyard) return 10000000;
 
+    double bonus = 1;
 
     int halite = at(dest)->halite;
     int turns_to = calculate_distance(s->position, dest);
     int turns_back = calculate_distance(dest, shipyard);
 
-    int shipyard_bonus = avg_around_point(shipyard, 5);
-    if (shipyard_bonus > 155) {
-        halite *= 3;
-        //turns_to /= 6.0;
+    /*
+    int avg_bonus = avg_around_point(dest, 5);
+    if (avg_bonus > 100) {
+        //bonus = (avg_bonus / 150.0) * 3.0;
+    }*/
+    int shipyard_bonus = avg_around_point(dest, 5);
+    if (shipyard_bonus > 100) {
+        bonus = 3;
     }
 
-    int enemies = enemies_around_point(dest, 4);
-    int friends = friends_around_point(dest, 4);
+    int enemies = enemies_around_point(dest, 5);
+    int friends = friends_around_point(dest, 5);
 
+    /*
+    auto enemyDrop = closest_enemy_dropoff(dest, game);
+    int enemies_around_drop = enemies_around_point(enemyDrop, 5);
+    int hal_around_enemy_drop = avg_around_point(shipyard, 5);
+    int dist_to_enemy_drop = calculate_distance(enemyDrop, dest);
+    if (dist_to_enemy_drop <= 5 && enemies_around_drop < 4 && is_1v1 && hal_around_enemy_drop > 155) {
+        //halite *= 3;
+    }*/
+
+    /*
     int dist_to_enemy_yard = 100;
     int yard_dist = calculate_distance(game->me->shipyard->position, dest);
     for (auto p : game->players) {
@@ -952,9 +1020,9 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     int diff = dist_to_enemy_yard - yard_dist;
     if (diff >= 0 && diff <= 3 && halite > 100 && game->turn_number > 60 && game->turn_number < 200) {
        //halite *= 2.5;
-    }
+    }*/
 
-    int turns = pow(max(1, turns_to + turns_back), 1.0);
+    int turns = fmax(1.0, turns_to + turns_back);
 
     /*
     int dist_to_enemy = 10000;
@@ -976,6 +1044,10 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     if (at(dest)->occupied_by_not(pid)) {
         if (should_collide(dest, s)) {
             halite += at(dest)->ship->halite;
+            /*
+            if (turns_to <= 1) {
+                halite *= 100;
+            }*/
         } else {
             if (!is_1v1) {
                 return 1000000;
@@ -985,9 +1057,11 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
 
     bool inspired = false;
 
+    // grouping bonus
+    // halite *= (1.0 + (friends - enemies) / 5.0);
     if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
         if (is_1v1 && turns_to < 7) {
-            halite += halite * (friends - enemies) / 4.0;
+            halite += halite * (friends - enemies) / 9.0;
             inspired = true;
         }
         else if (!is_1v1) {
@@ -995,6 +1069,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
             inspired = true;
         }
     }
+    //inspired |= dist_to_enemy_drop <= 6;
 
     //to_cost = 0;
     //int avg_hal = avg_around_point(dest, 1);
@@ -1019,7 +1094,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         out = max(cout, out);
     }
 
-    return -out * 100;
+    return -bonus * out;
 }
 
 // count number of inspired enemies
@@ -1114,7 +1189,7 @@ int GameMap::sum_around_point(Position p, int r) {
             auto end = Position(p.x - r + i, p.y -r + k);
             if (calculate_distance(p, end) <= r) {
                 auto z = normalize(end);
-                sum += at(z)->halite;
+                sum += 1.0 / (r - calculate_distance(p, end) + 1) * at(z)->halite * at(z)->halite;
             }
         }
     }
