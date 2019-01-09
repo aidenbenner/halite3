@@ -423,10 +423,18 @@ int main(int argc, char* argv[]) {
                     }
                 }
             }
+            /*
+            log::log("Walking");
+            for (int i = 0; i<(int)candidate_squares.size(); i++) {
+                log::log(turnTimer.elapsed());
+                auto pos = candidate_squares[i].second;
+                Order o;
+                auto walk = game_map->get_best_random_walk(ship->halite, ship->position, pos, o, -1);
+                candidate_squares[i] = make_pair(100000 - 100 * walk.cost, pos);
+            }
+            log::log("Done Walking");*/
             candidates.push_back(candidate_squares);
         }
-
-
 
         // Compress states for hungarian assignment
         map<Position, int> posToInd;
@@ -454,8 +462,11 @@ int main(int argc, char* argv[]) {
         }
 
         vector<int> assgn(me->ships.size(), 0);
-        double remaining = (1.6 - turnTimer.elapsed()) / me->ships.size();
+        int count = 0;
         if (costMatrix.size() != 0) {
+            double remaining = (1.8 - turnTimer.elapsed()) / (ship_counter - count);
+            count++;
+            log::log(1.9 - turnTimer.elapsed());
             log::log(costMatrix.size(), costMatrix[0].size());
             log::log("Before hungarian ", turnTimer.elapsed());
             hungarianAlgorithm.Solve(costMatrix, assgn);
@@ -473,12 +484,13 @@ int main(int argc, char* argv[]) {
                 options = game_map->minCostOptions(greedy_bfs[ship->position].parent, ship->position, mdest);
                 Order o{10, GATHERING, ship, mdest};
                 o.setAllCosts(1e8);
-                auto walk = game_map->get_best_random_walk(ship->halite, ship->position, mdest, o, fmax(0.005, remaining / me->ships.size()));
+                auto walk = game_map->get_best_random_walk(ship->halite, ship->position, mdest, o, fmax(0.001, remaining));
+                log::log(ship->id);
+                log::log("val of best", walk.cost);
                 // game_map->addPlanned(0, walk.walk);
                 added.insert(ship->id);
                 claimed.insert(mdest);
                 o.add_dir_priority(walk.bestdir, 1);
-
                 ordersMap[ship->id] = o;
             }
         }

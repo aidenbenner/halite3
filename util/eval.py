@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
 import os
 
-os.system('hlt gym evaluate -b ./halite --output-dir ./replays -i 10')
+os.system('hlt play -b ./halite -r "./MyBot" -r "./bots/benchmark" -i 20')
