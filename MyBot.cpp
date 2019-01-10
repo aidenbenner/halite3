@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
                                 //int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
                                 int enemies = game_map->enemies_around_point(curr, 4);
                                 int friends = game_map->friends_around_point(curr, 4);
-                                if ((friends - enemies) >= -2) {
+                                if ((friends - enemies) >= -2 && friends > 3) {
                                     if (closest_friend != nullptr) {
                                         curr_avg_halite = cost;
                                         best_dropoff = closest_friend;
