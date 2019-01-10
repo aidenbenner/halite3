@@ -157,17 +157,6 @@ int main(int argc, char* argv[]) {
         }
 
         int return_cash = 0;
-        int close_return_ship_val = 0;
-        if (game.turn_number < 20) {
-            for (const auto &ship_iterator : me->ships) {
-                shared_ptr<Ship> ship = ship_iterator.second;
-                if (ship->halite > 300) {
-                    close_return_ship_val += ship->halite;
-                }
-            }
-        }
-
-        //int remaining_hal_per_ship = game_map->get_hal() / (1 + me->ships.size());
         for (const auto &ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             EntityId id = ship->id;
@@ -178,17 +167,10 @@ int main(int argc, char* argv[]) {
             if (stateMp[id] == ShipState::DROPOFF) {
                 stateMp[id] = GATHERING;
             }
-            if (close_return_ship_val >= 1000 && ship->halite > 300) {
-                stateMp[id] = RETURNING;
-            }
             if (ship->halite >= constants::MAX_HALITE * 0.90) {
                 stateMp[id] = RETURNING;
                 return_cash += ship->halite;
             }
-            /*
-            if (remaining_hal_per_ship < 500 && ship->halite >= 700) {
-                stateMp[id] = RETURNING;
-            }*/
             if (ship->halite == 0) {
                 stateMp[id] = GATHERING;
                 num_gathering_ships++;

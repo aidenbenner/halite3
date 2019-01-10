@@ -275,7 +275,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
     vector<Position> best_path;
     Timer timer;
     timer.start();
-    int itrs = min(15000, (int)pow(calculate_distance(start, dest), 3) * 100);
+    int itrs = min(150000, (int)pow(calculate_distance(start, dest), 3) * 100);
     int i = 0;
 
     map<Direction, double> costMp;
@@ -387,11 +387,11 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
         for (int i = 1; i<=6; i++) {
             if (did_break) break;
-            dest_halite += ceil(0.25 * remaining_hal);
+            dest_halite += 0.25 * remaining_hal;
             if (is_inspired(dest, constants::PID) || likely_inspired(dest, turns + i)) {
-                dest_halite += ceil(0.5 * remaining_hal);
+                dest_halite += 0.5 * remaining_hal;
             }
-            remaining_hal = floor(0.75 * remaining_hal);
+            remaining_hal *= 0.75;
             c = fmax(c, (dest_halite + curr_halite - starting_halite) / (turns + i));
         }
 
@@ -1011,13 +1011,14 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     int turns_to = calculate_distance(s->position, dest);
     int turns_back = calculate_distance(dest, shipyard);
 
+    /*
     int avg_bonus = avg_around_point(dest, 5);
-    //if (avg_bonus > 100) {
-    bonus += (avg_bonus / 150.0);
-    //}
-    int shipyard_bonus = avg_around_point(shipyard, 5);
+    if (avg_bonus > 100) {
+        //bonus = (avg_bonus / 150.0) * 3.0;
+    }*/
+    int shipyard_bonus = avg_around_point(dest, 5);
     if (shipyard_bonus > 100) {
-        bonus += 2;
+        bonus = 3;
     }
 
     int enemies = enemies_around_point(dest, 5);
