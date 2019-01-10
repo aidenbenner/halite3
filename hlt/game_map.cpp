@@ -981,14 +981,17 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     int collision_hal = cenemy->halite + pal->halite + hal_on_square;
 
     // check if pal can gather
-    if (pal->halite + collision_hal > 1200) return false;
 
+    int enemies = enemies_around_point(position, 4);
+    int friends = friends_around_point(position, 4);
+    if (friends >= enemies + 2) return true;
     int paldist = calculate_distance(pal->position, position);
     int enemydist = calculate_distance(cenemy->position, position);
-    if (paldist > enemydist) return false;
+    if (paldist > 2 + enemydist) return false;
 
-    int enemies = enemies_around_point(position, 3);
-    int friends = friends_around_point(position, 3);
+
+    if (pal->halite + collision_hal > 1200) return false;
+
     if (ship->halite > enemy_hal)
         return false;
 
