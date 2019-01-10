@@ -263,6 +263,7 @@ int main(int argc, char* argv[]) {
                 if (game_map->at(ship_iterator.second)->halite > 4000 - ship_iterator.second->halite) {
                     curr_avg_halite = 9999999;
                     best_dropoff = ship_iterator.second.get();
+                    best_drop_location = ship_iterator.second->position;
                 }
             }
 
