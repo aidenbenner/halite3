@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
                                 //int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
                                 int enemies = game_map->enemies_around_point(curr, 4);
                                 int friends = game_map->friends_around_point(curr, 4);
-                                if ((friends - enemies) >= -2 && friends > 3) {
+                                if ((friends - enemies) >= -2) {
                                     if (closest_friend != nullptr) {
                                         curr_avg_halite = cost;
                                         best_dropoff = closest_friend;
@@ -465,7 +465,12 @@ int main(int argc, char* argv[]) {
         vector<int> assgn(me->ships.size(), 0);
         int count = 0;
         if (costMatrix.size() != 0) {
-            double remaining = (1.8 - turnTimer.elapsed()) / (ship_counter - count);
+            double timelim = 1.8;
+            if (IS_DEBUG) {
+                timelim = 0.1;
+            }
+
+            double remaining = (timelim - turnTimer.elapsed()) / (ship_counter - count);
             count++;
             log::log(1.9 - turnTimer.elapsed());
             log::log(costMatrix.size(), costMatrix[0].size());

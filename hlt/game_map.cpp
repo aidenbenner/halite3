@@ -275,7 +275,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
     vector<Position> best_path;
     Timer timer;
     timer.start();
-    int itrs = min(150000, (int)pow(calculate_distance(start, dest), 3) * 100);
+    int itrs = min(5000, (int)pow(calculate_distance(start, dest), 3) * 100);
     int i = 0;
 
     map<Direction, double> costMp;
@@ -961,7 +961,7 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     int hal_on_square = at(position)->halite;
     int enemy_hal = hal_on_square + enemy->halite;
     if (ship->halite > 700) return false;
-    if (enemy_hal < 400) return false;
+    if (enemy_hal < 300) return false;
 
 
     // estimated future value of this ship
@@ -1093,7 +1093,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
             inspired = true;
         }
         else if (!is_1v1) {
-            halite += halite * (friends) / 9.0;
+            bonus += (friends) / 8.0;
             inspired = true;
         }
     }
