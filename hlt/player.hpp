@@ -14,6 +14,11 @@ namespace hlt {
         PlayerId id;
         std::shared_ptr<Shipyard> shipyard;
         Halite halite;
+        set<Position> collisions;
+
+        bool recent_collision(Position p) {
+            return collisions.count(p);
+        }
 
         std::set<EntityId> profitable_ships;
         std::map<EntityId, std::shared_ptr<Ship>> ships;

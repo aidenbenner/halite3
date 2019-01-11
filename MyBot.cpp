@@ -274,7 +274,7 @@ int main(int argc, char* argv[]) {
                         if (avg_halite > 180
                             && !tooCloseToEnemy
                             && dist_to_shipyard - dist_to_enemy_shipyard <= 10) {
-                            log::flog(log::Log{game.turn_number - 1, curr.x, curr.y, "could drop" + to_string(avg_halite), "#00FFFF"});
+                            //log::flog(log::Log{game.turn_number - 1, curr.x, curr.y, "could drop" + to_string(avg_halite), "#00FFFF"});
                             auto closest_friend = game_map->closestFriendlyShip(curr);
                             if (closest_friend == nullptr) continue;
                             int friendly_dist = game_map->calculate_distance(closest_friend->position, curr);
@@ -309,7 +309,7 @@ int main(int argc, char* argv[]) {
 
             save_for_drop = false;
             if (best_dropoff != nullptr && DROPOFFS_ENABLED) {
-                log::flog(log::Log{game.turn_number - 1, best_drop_location.x, best_drop_location.y, "best drop", "#FFFFFF"});
+                log::flog(log::Log{game.turn_number - 1, best_drop_location.x, best_drop_location.y, "best drop", "#00FF00"});
                 int dist = game_map->calculate_distance(best_drop_location, best_dropoff->position);
                 stateMp[best_dropoff->id] = ShipState::DROPOFF;
 
@@ -453,12 +453,19 @@ int main(int argc, char* argv[]) {
 
                     double c = game_map->costfn(ship.get(), net_cost_to, cost_from, drop, dest, me->id, is_1v1,
                                                 extra_turns, game, futureVal);
+
+                    int reps = 1;
+                    if (me->recent_collision(dest) && game_map->at(dest)->halite > 500) {
+                        reps = 5;
+                    }
                     // costMatrix.back()[i * game_map->width + k] = c + 1000000;
-                    candidate_squares.push_back(make_pair(c + 1000000, dest));
-                    push_heap(candidate_squares.begin(), candidate_squares.end());
-                    if ((int)candidate_squares.size() > (int)me->ships.size()) {
-                        pop_heap(candidate_squares.begin(), candidate_squares.end());
-                        candidate_squares.pop_back();
+                    while(reps--) {
+                        candidate_squares.push_back(make_pair(c + 1000000, dest));
+                        push_heap(candidate_squares.begin(), candidate_squares.end());
+                        if ((int)candidate_squares.size() > (int)me->ships.size()) {
+                            pop_heap(candidate_squares.begin(), candidate_squares.end());
+                            candidate_squares.pop_back();
+                        }
                     }
                 }
             }
@@ -476,14 +483,18 @@ int main(int argc, char* argv[]) {
         }
 
         // Compress states for hungarian assignment
-        map<Position, int> posToInd;
+        multimap<Position, int> posToInd;
         map<int, Position> indToPos;
         int pos_counter = 0;
         int ship_counter = 0;
         for (auto shipc : candidates) {
+            multiset<Position> cand_map;
             for (auto c : shipc) {
-                if (!posToInd.count(c.second)) {
-                    posToInd[c.second] = pos_counter;
+                cand_map.insert(c.second);
+            }
+            for (auto c : shipc) {
+                if (posToInd.count(c.second) < cand_map.count(c.second)) {
+                    posToInd.insert(make_pair(c.second, pos_counter));
                     indToPos[pos_counter] = c.second;
                     ++pos_counter;
                 }
@@ -495,7 +506,10 @@ int main(int argc, char* argv[]) {
         for (auto shipc : candidates) {
             costMatrix.push_back(vector<double>(pos_counter, 1e9));
             for (auto c : shipc) {
-                costMatrix.at(ship_counter).at(posToInd[c.second]) = c.first;
+                auto range = posToInd.equal_range(c.second);
+                for (auto itr = range.first; itr != range.second; itr++) {
+                    costMatrix.at(ship_counter).at(itr->second) = c.first;
+                }
             }
             ship_counter++;
         }
@@ -668,6 +682,8 @@ int main(int argc, char* argv[]) {
             }
 
             game_map->addSet(1, game_map->normalize(ship->position.directional_offset(dir)));
+
+            ship->planned_next = ship->position.directional_offset(dir);
             command_queue.push_back(ship->move(dir));
             i++;
         }

@@ -5,6 +5,7 @@
 #include "command.hpp"
 
 #include <memory>
+#include <set>
 
 using namespace std;
 namespace hlt {
@@ -18,6 +19,8 @@ namespace hlt {
 
         int last_hal = 0;
         int lifetime_hal = 0;
+
+        Position planned_next;
 
         vector<Position> history;
 
@@ -102,8 +105,6 @@ namespace hlt {
         Ship* use() {
             return ship;
         }
-
-
         void setAllCosts(double d) {
             add_dir_priority(Direction::STILL, d);
             add_dir_priority(Direction::NORTH, d);

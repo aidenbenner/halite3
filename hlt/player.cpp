@@ -19,6 +19,12 @@ void hlt::Player::_update(int num_ships, int num_dropoffs, Halite halite) {
             profitable_ships.insert(ship->id);
         }
     }
+    for (auto s : ships) {
+        if (!nextShips.count(s.second->id)) {
+            log::log("FOUND COLLISION");
+            this->collisions.insert(s.second->planned_next);
+        }
+    }
     ships = nextShips;
 
     dropoffs.clear();
