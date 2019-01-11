@@ -341,7 +341,6 @@ int main(int argc, char* argv[]) {
                         auto ship = best_dropoff;
                         me->dropoffs[(int) -ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x,
                                                                                   ship->position.y);
-
                         given_order.insert(ship->id);
                         command_queue.push_back(ship->make_dropoff());
                         assigned.insert(ship);
@@ -351,6 +350,7 @@ int main(int argc, char* argv[]) {
                         auto ship = best_dropoff;
                         me->dropoffs[(int) -ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x,
                                                                                   ship->position.y);
+                        me->dropoffs[(int) -ship->id]->is_fake = true;
                         save_for_drop = true;
                     }
                 }
