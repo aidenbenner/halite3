@@ -92,7 +92,14 @@ vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Ga
             }
         }
         else {
-            out.push_back(d);
+            if (stuck) {
+                if (rand() % 8 == 0) {
+                    out.push_back(d);
+                }
+            }
+            else {
+                out.push_back(d);
+            }
         }
     }
     return out;

@@ -950,8 +950,21 @@ bool GameMap::should_collide(Position position, Ship* ship, Ship* enemy) {
 }*/
 
 bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
-    if (enemy == nullptr)
+    bool is4p = game->players.size() == 4;
+    if (enemy == nullptr) {
         enemy = at(position)->ship.get();
+    }
+
+    if (is4p) {
+        if (at(position)->ship.get() != nullptr) {
+            return false;
+        }
+    }
+
+    /*
+    if (game->turn_number < 300 && is4p && at(position)->occupied_by_not(constants::PID)) {
+        return false;
+    }*/
 
     if (at(position)->has_structure())
         return at(position)->structure->owner == constants::PID;
@@ -961,7 +974,9 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     int hal_on_square = at(position)->halite;
     int enemy_hal = hal_on_square + enemy->halite;
     if (ship->halite > 700) return false;
+    if (is4p && ship->halite > 500) return false;
     if (enemy_hal < 300) return false;
+    if (is4p && enemy_hal < 500) return false;
 
 
     // estimated future value of this ship
@@ -981,16 +996,16 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     int collision_hal = cenemy->halite + pal->halite + hal_on_square;
 
     // check if pal can gather
-
     int enemies = enemies_around_point(position, 4);
     int friends = friends_around_point(position, 4);
     if (friends >= enemies + 2) return true;
+
     int paldist = calculate_distance(pal->position, position);
     int enemydist = calculate_distance(cenemy->position, position);
     if (paldist > 2 + enemydist) return false;
 
 
-    if (pal->halite + collision_hal > 1200) return false;
+    if (pal->halite + collision_hal > 1400) return false;
 
     if (ship->halite > enemy_hal)
         return false;

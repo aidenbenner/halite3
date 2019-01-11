@@ -556,10 +556,10 @@ int main(int argc, char* argv[]) {
             auto response = EnemyResponse::SMART;
             if (!is_1v1) {
                 if (has_collided) {
-                    response = TOLERATE;
+                    response = SMART;
                 }
                 else {
-                    response = TOLERATE;
+                    response = SMART;
                 }
             }
             else {

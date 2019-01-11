@@ -15,7 +15,7 @@ small =  '--small' in args
 ssmall =  '--ssmall' in args
 medium =  '--medium' in args
 play_self =  '--self' in args
-large =  '--self' in args
+large =  '--large' in args
 p4 = '--4p' in args
 
 bot_args = []
@@ -45,7 +45,7 @@ seed -= seed % 10000
 print('Running with seed %s' % seed)
 
 if play_self:
-    os.system('./halite --replay-directory replays/ -vvv --width %s --height %s "./MyBot %s" "./MyBot %s"' % (width, width, bot_arg_str, bot_arg_str))
+    os.system('./halite --replay-directory replays/ -vvv --width %s --height %s "./MyBot %s" "./benchmarks/RandomBot.py"' % (width, width, bot_arg_str))
 elif p4:
     os.system('./halite --replay-directory replays/ -vvv --width %s --height %s "./MyBot %s" "./bots/benchmark %s" "./bots/benchmark %s" "./MyBot %s"' % (width, width, bot_arg_str, bot_arg_str, bot_arg_str, bot_arg_str))
 else:
