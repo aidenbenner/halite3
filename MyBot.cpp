@@ -23,6 +23,24 @@ double getTime() {
     return tv.tv_sec + tv.tv_usec * 1e-6;
 }
 
+int dirToInt(Direction d) {
+    switch(d) {
+        case Direction::NORTH:
+            return 0;
+        case Direction::EAST:
+            return 1;
+        case Direction::SOUTH:
+            return 2;
+        case Direction::WEST:
+            return 3;
+        case Direction::STILL:
+            return 4;
+    }
+    assert(false);
+    return -1;
+}
+
+
 // TODO
 // - EVADING
 // - Don't take bad collisions
@@ -149,11 +167,26 @@ int main(int argc, char* argv[]) {
         int num_gathering_ships = 0;
 
         // ships returning to each drop
-        map<Position, int> dropReturnCount;
+        map<Position, vector<int>> dropReturnCount;
+        map<Position, int> dropReturnCoeff;
         for (auto s : me->ships) {
             auto drop = game_map->closest_dropoff(s.second->position, &game);
-            if (!dropReturnCount.count(drop)) dropReturnCount[drop] = 0;
-            dropReturnCount[drop] += 1;
+            auto dirs = game_map->get_unsafe_moves(s.second->position, drop);
+            if (!dropReturnCoeff.count(drop)) dropReturnCoeff[drop] = 0;
+            if (!dropReturnCount.count(drop)) dropReturnCount[drop] = vector<int>(6, 0);
+            if (dirs.size() == 0 || dirs[0] == Direction::STILL) {
+                continue;
+            }
+            auto mdir = dirs.at(0);
+            int amount = dropReturnCount[drop].at(dirToInt(dirs.at(0)));
+            for (auto d : dirs) {
+                if (amount < dropReturnCount[drop][dirToInt(d)]) {
+                    amount = dropReturnCount[drop][dirToInt(d)];
+                    mdir = d;
+                }
+            }
+            dropReturnCount[drop][dirToInt(mdir)] += 1;
+            dropReturnCoeff[drop] = *std::max_element(dropReturnCount[drop].begin(), dropReturnCount[drop].end());
         }
 
         int return_cash = 0;
@@ -176,9 +209,14 @@ int main(int argc, char* argv[]) {
                 num_gathering_ships++;
             }
             auto drop = game_map->closest_dropoff(ship->position, &game);
+            auto dirs = game_map->get_unsafe_moves(ship->position, drop);
+
+            int turns_to_return = 0;
+            if (dirs.size() > 1) {
+                turns_to_return = max(dropReturnCount[drop][dirToInt(dirs[0])], dropReturnCount[drop][dirToInt(dirs[1])]);
+            }
             if (remaining_turns <
-                game_map->calculate_distance(ship->position, drop)
-                + 0.28 * dropReturnCount[drop]) {
+                game_map->calculate_distance(ship->position, drop) + 1 + turns_to_return) {
                 stateMp[id] = SUPER_RETURN;
             }
             ship->state = stateMp[id];

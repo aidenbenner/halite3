@@ -974,9 +974,9 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     int hal_on_square = at(position)->halite;
     int enemy_hal = hal_on_square + enemy->halite;
     if (ship->halite > 700) return false;
-    if (is4p && ship->halite > 500) return false;
+    //if (is4p && ship->halite > 500) return false;
     if (enemy_hal < 300) return false;
-    if (is4p && enemy_hal < 500) return false;
+    //if (is4p && enemy_hal < 500) return false;
 
     // estimated future value of this ship
     /*

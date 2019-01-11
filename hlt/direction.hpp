@@ -4,6 +4,7 @@
 
 #include <ostream>
 #include <array>
+#include <assert.h>
 
 namespace hlt {
     enum class Direction : char {
