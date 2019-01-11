@@ -956,9 +956,9 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     }
 
     if (is4p) {
-        if (at(position)->ship.get() != nullptr) {
-            return false;
-        }
+        //if (at(position)->ship.get() != nullptr) {
+        //    return false;
+        //}
     }
 
     /*
@@ -977,7 +977,6 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     if (is4p && ship->halite > 500) return false;
     if (enemy_hal < 300) return false;
     if (is4p && enemy_hal < 500) return false;
-
 
     // estimated future value of this ship
     /*
