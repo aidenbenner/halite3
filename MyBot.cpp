@@ -367,7 +367,7 @@ int main(int argc, char* argv[]) {
 
             if (state != SUPER_RETURN) {
                 Position best_drop = me->shipyard->position;
-                int best_cost = 20 + game_map->calculate_distance(me->shipyard->position, ship->position);
+                int best_cost = game_map->calculate_distance(me->shipyard->position, ship->position);
                 for (auto dropoff : me->dropoffs) {
                     if (dropoff.second->is_fake) continue;
                     if (dropoff.second->position == me->shipyard->position) continue;
