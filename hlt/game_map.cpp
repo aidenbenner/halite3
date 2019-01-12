@@ -1089,8 +1089,8 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
                 halite += at(dest)->ship->halite;
             }
             if (!is_1v1) {
-                halite /= 2;
-                halite = at(dest)->ship->halite / 4;
+                halite += at(dest)->ship->halite;
+                halite *= (0.5 + game->turn_number / (2.0 + (double)constants::MAX_TURNS));
             }
         } else {
             if (!is_1v1) {
