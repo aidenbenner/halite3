@@ -1085,11 +1085,13 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
 
     if (at(dest)->occupied_by_not(pid)) {
         if (should_collide(dest, s)) {
-            halite += at(dest)->ship->halite;
-            /*
-            if (turns_to <= 1) {
-                halite *= 100;
-            }*/
+            if (is_1v1) {
+                halite += at(dest)->ship->halite;
+            }
+            if (!is_1v1) {
+                halite /= 2;
+                halite = at(dest)->ship->halite / 4;
+            }
         } else {
             if (!is_1v1) {
                 return 1000000;
