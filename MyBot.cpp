@@ -278,7 +278,10 @@ int main(int argc, char* argv[]) {
                             auto closest_friend = game_map->closestFriendlyShip(curr);
                             if (closest_friend == nullptr) continue;
                             int friendly_dist = game_map->calculate_distance(closest_friend->position, curr);
-                            double cost = game_map->sum_around_point(curr, 4) / (2.0 + friendly_dist);
+                            double cost = game_map->sum_around_point(curr, 4) / (10.0 + friendly_dist);
+                            if (is_1v1) {
+                                cost = game_map->sum_around_point(curr, 4) / (100.0 + friendly_dist);
+                            }
                             if (curr_avg_halite < cost) {
                                 //auto closest_enemy = game_map->closestEnemyShip(curr);
                                 //int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
