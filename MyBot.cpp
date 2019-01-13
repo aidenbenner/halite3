@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
     map<EntityId, ShipState> stateMp;
     map<EntityId, int> stuckMap;
 
-    game.ready("adbv121");
+    game.ready("adbv138");
     log::log("Successfully created bot! My Player ID is " + to_string(game.my_id) + ". Bot rng seed is " + to_string(rng_seed) + ".");
     constants::PID = game.my_id;
     Metrics::init(&game);
@@ -367,7 +367,7 @@ int main(int argc, char* argv[]) {
 
             if (state != SUPER_RETURN) {
                 Position best_drop = me->shipyard->position;
-                int best_cost = game_map->calculate_distance(me->shipyard->position, ship->position);
+                int best_cost = 15 + game_map->calculate_distance(me->shipyard->position, ship->position);
                 for (auto dropoff : me->dropoffs) {
                     if (dropoff.second->is_fake) continue;
                     if (dropoff.second->position == me->shipyard->position) continue;
