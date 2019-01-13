@@ -1108,8 +1108,9 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
             halite += halite * (friends - enemies) / 4.0;
             inspired = true;
         }
-        else if (!is_1v1) {
-            bonus += (friends) / 8.0;
+        else if (!is_1v1 && turns_to < 7) {
+            halite += halite * (friends - enemies) / 4.0;
+            //bonus += (friends) / 8.0;
             inspired = true;
         }
     }
