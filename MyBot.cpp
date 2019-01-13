@@ -365,20 +365,27 @@ int main(int argc, char* argv[]) {
             auto state = stateMp[ship->id];
             auto mdest = game_map->closest_dropoff(ship->position, &game);
 
+            /*
             if (state != SUPER_RETURN) {
                 Position best_drop = me->shipyard->position;
-                int best_cost = 15 + game_map->calculate_distance(me->shipyard->position, ship->position);
+                int best_cost = game_map->calculate_distance(me->shipyard->position, ship->position);
                 for (auto dropoff : me->dropoffs) {
                     if (dropoff.second->is_fake) continue;
-                    if (dropoff.second->position == me->shipyard->position) continue;
                     int dist = game_map->calculate_distance(ship->position, dropoff.second->position);
+                    if (dropoff.second->position == me->shipyard->position) {
+                        if (dist > 5) {
+                            continue;
+                        }
+                    }
+                    // int avg = game_map->avg_around_point(ship->position, 4);
+                    // dist -= avg / 20;
                     if (dist < best_cost) {
                         best_cost = dist;
                         best_drop = dropoff.second->position;
                     }
                 }
                 mdest = best_drop;
-            }
+            }*/
 
 
             vector<Direction> options;

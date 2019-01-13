@@ -1032,7 +1032,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     }*/
     int shipyard_bonus = avg_around_point(dest, 5);
     if (shipyard_bonus > 100) {
-        bonus = 3;
+        bonus = 3.0; // 1.0 * shipyard_bonus / 100.0;
     }
 
     int enemies = enemies_around_point(dest, 5);
