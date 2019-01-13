@@ -147,6 +147,7 @@ int main(int argc, char* argv[]) {
         if ((int) last_ship_count > (int) me->ships.size()) {
             has_collided = true;
         }
+
         log::log("Has collided ", has_collided);
         last_ship_count = me->ships.size();
 
@@ -155,6 +156,13 @@ int main(int argc, char* argv[]) {
         game_map->initGame(&game);
         vector<Command> command_queue;
         unordered_set<Ship *> assigned;
+
+        int total_ships = 1;
+        for (auto p : game.players) {
+            total_ships += p->ships.size();
+        }
+
+        int remaining_hal_per_ship = game_map->get_hal() / total_ships;
 
         // Add shipyard to dropoffs
         me->dropoffs[-3000] = make_shared<Dropoff>(me->id, -3000, me->shipyard->position.x, me->shipyard->position.y);
@@ -204,6 +212,11 @@ int main(int argc, char* argv[]) {
                 stateMp[id] = RETURNING;
                 return_cash += ship->halite;
             }
+            /*
+            else if (remaining_hal_per_ship < 100 && ship->halite >= 500) {
+                stateMp[id] = RETURNING;
+                return_cash += ship->halite;
+            }*/
             if (ship->halite == 0) {
                 stateMp[id] = GATHERING;
                 num_gathering_ships++;
@@ -733,13 +746,6 @@ int main(int argc, char* argv[]) {
         int profitability_est = halite_per_ship_turn * (remaining_turns - 60);
         log::log("Halite per ship turn, profit est");
         log::log(halite_per_ship_turn, halite_per_ship_turn, profitability_est);
-
-        int total_ships = 1;
-        for (auto p : game.players) {
-            total_ships += p->ships.size();
-        }
-
-        int remaining_hal_per_ship = game_map->get_hal() / total_ships;
 
         if (is_1v1) {
             ship_target = min(10, (int)opponent->ships.size());

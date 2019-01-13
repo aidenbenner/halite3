@@ -965,6 +965,10 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     if (game->turn_number < 300 && is4p && at(position)->occupied_by_not(constants::PID)) {
         return false;
     }*/
+    int possible_loss = 0;
+    if (ship->position == position) {
+        possible_loss = at(position)->halite;
+    }
 
     if (at(position)->has_structure())
         return at(position)->structure->owner == constants::PID;
@@ -975,7 +979,7 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     int enemy_hal = hal_on_square + enemy->halite;
     if (ship->halite > 700) return false;
     //if (is4p && ship->halite > 500) return false;
-    if (enemy_hal < 300) return false;
+    if (possible_loss + enemy_hal < 300) return false;
     //if (is4p && enemy_hal < 500) return false;
 
     // estimated future value of this ship
@@ -1006,7 +1010,7 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
 
     if (pal->halite + collision_hal > 1400) return false;
 
-    if (ship->halite > enemy_hal)
+    if (ship->halite > possible_loss + enemy_hal)
         return false;
 
     if (friends >= enemies) {
@@ -1030,18 +1034,20 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     if (avg_bonus > 100) {
         //bonus = (avg_bonus / 150.0) * 3.0;
     }*/
-    int shipyard_bonus = avg_around_point(dest, 5);
-    if (shipyard_bonus > 100) {
-        bonus = 3.0; // 1.0 * shipyard_bonus / 100.0;
+    int avg_amount = avg_around_point(dest, 3);
+    bonus = max(1.0, min(4.0, 3.0 * avg_amount / 150.0));
+
+    int shipyard_bonus = avg_around_point(shipyard, 3);
+    if (shipyard_bonus > 150) {
+        bonus += 3;
     }
 
     int enemies = enemies_around_point(dest, 5);
     int friends = friends_around_point(dest, 5);
 
-
     int turns = fmax(1.0, turns_to + turns_back);
     if (!is_1v1) {
-        turns = 1 + turns_to + turns_back;
+        turns = turns_to + turns_back;
     }
 
     /*
@@ -1090,7 +1096,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
             }
             if (!is_1v1) {
                 halite += at(dest)->ship->halite;
-                halite *= (0.5 + game->turn_number / (2.0 + (double)constants::MAX_TURNS));
+                halite *= (0.5 + game->turn_number / ((double)constants::MAX_TURNS * 2.0));
             }
         } else {
             if (!is_1v1) {
@@ -1104,12 +1110,13 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     // grouping bonus
     // halite *= (1.0 + (friends - enemies) / 5.0);
     if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
-        if (is_1v1 && turns_to < 7) {
-            halite += halite * (friends - enemies) / 4.0;
+        if (is_1v1 && turns_to < 6) {
+            bonus += 1 + (1 + friends - enemies);
             inspired = true;
         }
-        else if (!is_1v1 && turns_to < 10) {
-            halite += halite * (friends - enemies) / 4.0;
+        else if (!is_1v1 && turns_to < 6) {
+            bonus += 1 + (1 + friends - enemies);
+            //halite += halite * (friends - enemies) / 4.0;
             //bonus += (friends) / 8.0;
             inspired = true;
         }
@@ -1129,10 +1136,10 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         }
         halite *= 0.75;
         if (mined + curr_hal > 1000) {
-            mined = 1000 - mined;
+            mined = 1000 - curr_hal;
         }
-        int c = turns_to + mined - to_cost;
-        double cout = (c) / ((double)turns + i);
+        int c = max(0, mined - to_cost);
+        double cout = (c) / ((double)1 + turns + i);
         /*
         if (is_1v1) {
             cout -= num_inspired(dest, pid) / (double)(turns + i);
@@ -1140,6 +1147,7 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         out = max(cout, out);
     }
 
+    bonus = fmax(bonus, 1);
     return -bonus * out;
 }
 
@@ -1277,7 +1285,9 @@ int GameMap::enemies_around_point(Position p, int r) {
     if (enemies_around_point_memo.count({p, r})) return enemies_around_point_memo[{p, r}];
     auto points = points_around_pos(p, r);
     return enemies_around_point_memo[{p, r}] = (int)std::count_if(points.begin(), points.end(), [this](Position p) {
-        return this->at(p)->occupied_by_not(constants::PID);
+        auto ship = this->at(p)->ship.get();
+        if (ship == nullptr) return false;
+        return ship->owner != constants::PID;// && ship->halite < 900;
     });
 }
 
@@ -1285,7 +1295,9 @@ int GameMap::friends_around_point(Position p, int r) {
     if (friends_around_point_memo.count({p, r})) return friends_around_point_memo[{p, r}];
     auto points = points_around_pos(p, r);
     return friends_around_point_memo[{p, r}] = (int)std::count_if(points.begin(), points.end(), [this](Position p) {
-        return this->at(p)->is_occupied(constants::PID);
+        auto ship = this->at(p)->ship.get();
+        if (ship == nullptr) return false;
+        return ship->owner == constants::PID;// && ship->halite < 900;
     });
 }
 
