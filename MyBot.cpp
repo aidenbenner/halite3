@@ -305,7 +305,7 @@ int main(int argc, char* argv[]) {
                             if (curr_avg_halite < cost) {
                                 auto closest_enemy = game_map->closestEnemyShip(curr);
                                 int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
-                                if (friendly_dist <= enemy_dist && (friends - enemies) >= -2) {
+                                if ((friends - enemies) >= -2) {
                                     if (closest_friend != nullptr) {
                                         curr_avg_halite = cost;
                                         best_dropoff = closest_friend;
@@ -349,9 +349,11 @@ int main(int argc, char* argv[]) {
                 }
 
                 ordersMap[best_dropoff->id] = o;*/
-
-                DROPOFF_PLANNED = true;
-                fake_drop = std::make_shared<Dropoff>(me->id, -5, best_drop_location.x, best_drop_location.y);
+                save_for_drop = true;
+                if (me->halite + 900 + game_map->at(best_drop_location)->halite > 4000) {
+                    DROPOFF_PLANNED = true;
+                    fake_drop = std::make_shared<Dropoff>(me->id, -5, best_drop_location.x, best_drop_location.y);
+                }
                 /*
                 if (dist == 0) {
                     if (me->halite + best_dropoff->halite >= constants::DROPOFF_COST) {
@@ -516,8 +518,8 @@ int main(int argc, char* argv[]) {
             candidate_squares.reserve(me->ships.size());
             asnMp[ship_count++] = ship.get();
 
-            double futureVal = Metrics::getHalPerShip();
-            double start = turnTimer.elapsed();
+            //double futureVal = Metrics::getHalPerShip();
+            //double start = turnTimer.elapsed();
             for (int i = 0; i < game_map->width; i++) {
                 for (int k = 0; k < game_map->width; k++) {
                     auto dest = Position(i, k);
