@@ -295,6 +295,38 @@ int main(int argc, char* argv[]) {
                         if (avg_halite > 180
                             && !tooCloseToEnemy
                             && dist_to_shipyard - dist_to_enemy_shipyard <= 20) {
+
+                            vector<int> friendly_dists;
+                            for (auto friendly : me->ships) {
+                                friendly_dists.push_back(game_map->calculate_distance(friendly.second->position, curr));
+                                push_heap(friendly_dists.begin(), friendly_dists.end());
+                                if (friendly_dists.size() > 4) {
+                                    pop_heap(friendly_dists.begin(), friendly_dists.end());
+                                    friendly_dists.pop_back();
+                                }
+                            }
+
+                            vector<int> enemy_dists;
+                            for (auto enemy : game.getEnemies()) {
+                                for (auto eship : enemy->ships) {
+                                    enemy_dists.push_back(game_map->calculate_distance(eship.second->position, curr));
+                                    push_heap(enemy_dists.begin(), enemy_dists.end());
+                                    if (enemy_dists.size() > 4) {
+                                        pop_heap(enemy_dists.begin(), enemy_dists.end());
+                                        enemy_dists.pop_back();
+                                    }
+                                }
+                            }
+
+                            int friend_dists = 0;
+                            int enemy_dist = 0;
+                            for (int i = 0; i<4; i++) {
+                                friend_dists += friendly_dists[i];
+                                enemy_dist += enemy_dists[i];
+                            }
+
+
+
                             //log::flog(log::Log{game.turn_number - 1, curr.x, curr.y, "could drop" + to_string(avg_halite), "#00FFFF"});
                             auto closest_friend = game_map->closestFriendlyShip(curr);
                             if (closest_friend == nullptr) continue;
@@ -302,7 +334,7 @@ int main(int argc, char* argv[]) {
                             int enemies = game_map->enemies_around_point(curr, 4);
                             int friends = game_map->friends_around_point(curr, 4);
                             double cost = game_map->sum_around_point(curr, 3);
-                            if (curr_avg_halite < cost) {
+                            if (curr_avg_halite < cost && friend_dists < enemy_dist) {
                                 //auto closest_enemy = game_map->closestEnemyShip(curr);
                                 //int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
                                 if ((friends - enemies) >= -2) {
