@@ -298,13 +298,13 @@ int main(int argc, char* argv[]) {
                             //log::flog(log::Log{game.turn_number - 1, curr.x, curr.y, "could drop" + to_string(avg_halite), "#00FFFF"});
                             auto closest_friend = game_map->closestFriendlyShip(curr);
                             if (closest_friend == nullptr) continue;
-                            int friendly_dist = game_map->calculate_distance(closest_friend->position, curr);
+                            //int friendly_dist = game_map->calculate_distance(closest_friend->position, curr);
                             int enemies = game_map->enemies_around_point(curr, 4);
                             int friends = game_map->friends_around_point(curr, 4);
-                            double cost = game_map->sum_around_point(curr, 5);
+                            double cost = game_map->sum_around_point(curr, 3);
                             if (curr_avg_halite < cost) {
-                                auto closest_enemy = game_map->closestEnemyShip(curr);
-                                int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
+                                //auto closest_enemy = game_map->closestEnemyShip(curr);
+                                //int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
                                 if ((friends - enemies) >= -2) {
                                     if (closest_friend != nullptr) {
                                         curr_avg_halite = cost;
@@ -350,7 +350,7 @@ int main(int argc, char* argv[]) {
 
                 ordersMap[best_dropoff->id] = o;*/
                 save_for_drop = true;
-                if (me->halite + 900 + game_map->at(best_drop_location)->halite > 4000) {
+                if (return_cash * 0.8 + me->halite + 900 + game_map->at(best_drop_location)->halite > 4000) {
                     DROPOFF_PLANNED = true;
                     fake_drop = std::make_shared<Dropoff>(me->id, -5, best_drop_location.x, best_drop_location.y);
                 }
