@@ -287,7 +287,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
     while (i < itrs + 1) {
         if (time_bank != 0 && timer.elapsed() > time_bank) {
             log::log("breaking cause time bank");
-            log::log(timer.elapsed(), time_bank);
+            log::log(timer.elapsed(), time_bank, i, itrs);
             break;
         }
         i++;
@@ -1019,8 +1019,7 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     return false;
 }
 
-double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1,
-                       int extra_turns, Game &g, double future_ship_val) {
+double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position &shipyard, Position &dest, bool is_1v1, Game &g) {
     if (dest == shipyard) return 10000000;
 
     double bonus = 1;
@@ -1028,27 +1027,21 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     int halite = at(dest)->halite;
     int turns_to = calculate_distance(s->position, dest);
     int turns_back = calculate_distance(dest, shipyard);
+    int turns = fmax(1.0, turns_to + turns_back);
+    if (!is_1v1) {
+        turns = turns_to + turns_back;
+    }
 
-    /*
-    int avg_bonus = avg_around_point(dest, 5);
-    if (avg_bonus > 100) {
-        //bonus = (avg_bonus / 150.0) * 3.0;
-    }*/
     int avg_amount = avg_around_point(dest, 3);
     bonus = max(1.0, min(4.0, 3.0 * avg_amount / 150.0));
 
     int shipyard_bonus = avg_around_point(shipyard, 3);
-    if (shipyard_bonus > 150) {
+    if (shipyard_bonus > 150 && turns_back <= 3) {
         bonus += 3;
     }
 
     int enemies = enemies_around_point(dest, 5);
     int friends = friends_around_point(dest, 5);
-
-    int turns = fmax(1.0, turns_to + turns_back);
-    if (!is_1v1) {
-        turns = turns_to + turns_back;
-    }
 
     /*
     auto enemyDrop = closest_enemy_dropoff(dest, game);
@@ -1089,13 +1082,14 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         halite *= 1.5;
     }*/
 
-    if (at(dest)->occupied_by_not(pid)) {
-        if (should_collide(dest, s)) {
+    auto enemy = enemy_in_range(dest, constants::PID);
+    if (enemy != nullptr) {
+        if (should_collide(dest, s, enemy)) {
             if (is_1v1) {
-                halite += at(dest)->ship->halite;
+                halite += enemy->halite;
             }
             if (!is_1v1) {
-                halite += at(dest)->ship->halite;
+                halite += enemy->halite;
                 halite *= (0.5 + game->turn_number / ((double)constants::MAX_TURNS * 2.0));
             }
         } else {
@@ -1109,12 +1103,12 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
 
     // grouping bonus
     // halite *= (1.0 + (friends - enemies) / 5.0);
-    if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
+    if (is_inspired(dest, constants::PID)) {
         if (is_1v1 && turns_to < 6) {
             bonus += 1 + (1 + friends - enemies);
             inspired = true;
         }
-        else if (!is_1v1 && turns_to < 6) {
+        else if (!is_1v1) {
             bonus += 1 + (1 + friends - enemies);
             //halite += halite * (friends - enemies) / 4.0;
             //bonus += (friends) / 8.0;
@@ -1129,16 +1123,19 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     int curr_hal = s->halite;
     double out = -1000;
     int mined = 0;
-    for (int i = 0; i<5; i++) {
-        mined += halite * 0.25;
+
+    for (int i = 0; i<1; i++) {
+        mined += halite;
         if (inspired) {
-            mined += halite * 0.5;
+            mined *= 3;
+            //mined += halite * 0.5;
         }
         halite *= 0.75;
-        if (mined + curr_hal > 1000) {
-            mined = 1000 - curr_hal;
+
+        if (mined + curr_hal - to_cost > 1000) {
+            mined = 1000 - curr_hal + to_cost;
         }
-        int c = max(0, mined - to_cost);
+        int c = max(0, mined - to_cost - home_cost);
         double cout = (c) / ((double)1 + turns + i);
         /*
         if (is_1v1) {
@@ -1243,7 +1240,7 @@ int GameMap::sum_around_point(Position p, int r) {
             auto end = Position(p.x - r + i, p.y -r + k);
             if (calculate_distance(p, end) <= r) {
                 auto z = normalize(end);
-                sum += 1.0 / (r - calculate_distance(p, end) + 1) * at(z)->halite * at(z)->halite;
+                sum += at(z)->halite; // 1.0 / (r - calculate_distance(p, end) + 1) * at(z)->halite * at(z)->halite;
             }
         }
     }

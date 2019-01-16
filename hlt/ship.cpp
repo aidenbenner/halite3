@@ -76,8 +76,13 @@ vector<Direction> Ship::GetAllowedDirs(GameMap *game_map, EnemyResponse type, Ga
                     out.push_back(d);
                     break;
                 case TOLERATE:
+                    /*
                     if (halite > enemy->halite - 100)
+                        break;*/
+                    /*
+                    if (game_map->at(pos)->occupied_by_enemy()) {
                         break;
+                    }*/
                     /*
                     if (d == Direction::STILL) {
                         out.push_back(d);

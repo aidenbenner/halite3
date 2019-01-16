@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -Werror -Wall -Wno-unused-function -pedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -Wall -Wno-unused-function -pedantic")
 
 include_directories(${CMAKE_SOURCE_DIR}/hlt)
 include_directories(${CMAKE_SOURCE_DIR}/cJSON)

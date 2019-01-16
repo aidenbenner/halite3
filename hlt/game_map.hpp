@@ -7,11 +7,10 @@
 #include <cassert>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
 #include <map>
 #include <string>
-#include <unordered_map>
 #include <utility>
-#include <unordered_set>
 #include <set>
 #include <deque>
 #include <string>
@@ -19,6 +18,16 @@
 
 using namespace std;
 namespace hlt {
+
+    struct pair_hash
+    {
+        template <class T1, class T2>
+        std::size_t operator() (const std::pair<T1, T2> &pair) const
+        {
+            return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+        }
+    };
+
     struct Ship;
 
     class GameMap {
@@ -38,16 +47,16 @@ namespace hlt {
         std::set<TimePos> planned_route;
         // std::map<Position, int> future_halite;
 
-        map<Position, int> inspiredCountMemo;
+        unordered_map<Position, int> inspiredCountMemo;
 
         std::map<Position, set<int>> hal_mp;
 
         // set_route contains the next turn state.
         std::map<TimePos, Ship*> set_route;
 
-        std::map<Position, Position> closestDropMp;
+        std::unordered_map<Position, Position> closestDropMp;
 
-        std::map<Position, Position> closestEnemyDropMp;
+        std::unordered_map<Position, Position> closestEnemyDropMp;
 
         Position closest_enemy_dropoff(Position pos, Game *g);
 
@@ -150,14 +159,13 @@ namespace hlt {
 
         int num_inspired(Position p, PlayerId id);
 
-        std::map<pair<Position, int>, float> avgAroundPointMemo;
+        std::unordered_map<pair<Position, int>, float, pair_hash> avgAroundPointMemo;
 
         bool should_collide(Position position, Ship *ship, Ship *enemy=nullptr);
 
-        double costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1,
-                              int extra_turns, Game &g, double future_ship_val);
+        double costfn(Ship *s, int to_cost, int home_cost, Position &shipyard, Position &dest, bool is_1v1, Game &g);
 
-        map<Position, bool> inspiredMemo;
+        unordered_map<Position, bool> inspiredMemo;
 
         bool is_inspired(Position p, PlayerId id, bool enemy=false);
 
@@ -179,8 +187,10 @@ namespace hlt {
 
         void _update();
         static std::unique_ptr<GameMap> _generate();
-        map<pair<Position, int>, int> enemies_around_point_memo;
-        map<pair<Position, int>, int> friends_around_point_memo;
+
+
+        unordered_map<pair<Position, int>, int, pair_hash> enemies_around_point_memo;
+        unordered_map<pair<Position, int>, int, pair_hash> friends_around_point_memo;
         vector<Position> points_around_pos(Position p, int r);
 
         int enemies_around_point(Position p, int r);
