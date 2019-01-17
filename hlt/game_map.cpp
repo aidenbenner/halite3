@@ -1243,7 +1243,7 @@ int GameMap::sum_around_point(Position p, int r) {
             auto end = Position(p.x - r + i, p.y -r + k);
             if (calculate_distance(p, end) <= r) {
                 auto z = normalize(end);
-                sum += 1.0 / (r - calculate_distance(p, end) + 1) * at(z)->halite * at(z)->halite;
+                sum += at(z)->halite; // 1.0 / (r - calculate_distance(p, end) + 1) * at(z)->halite * at(z)->halite;
             }
         }
     }
