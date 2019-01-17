@@ -224,7 +224,7 @@ int main(int argc, char* argv[]) {
 
             int turns_to_return = 0;
             if (dirs.size() > 1) {
-                turns_to_return = max(dropReturnCount[drop][dirToInt(dirs[0])], dropReturnCount[drop][dirToInt(dirs[1])]);
+                turns_to_return = min(dropReturnCount[drop][dirToInt(dirs[0])], dropReturnCount[drop][dirToInt(dirs[1])]);
             }
             if (remaining_turns <
                 game_map->calculate_distance(ship->position, drop) + 1 + turns_to_return) {
@@ -280,7 +280,7 @@ int main(int argc, char* argv[]) {
 
                     int dist_to_shipyard = game_map->calculate_distance(me->shipyard->position, curr);
 
-                    if (drop_dist >= 15
+                    if (drop_dist >= 9
                         && curr_dropoffs < expected_dropoffs
                         && remaining_turns > 120) {
                         float avg_halite = game_map->avg_around_point(curr, 5) - sqrt(dist_to_shipyard) / 1000.0;
@@ -293,8 +293,7 @@ int main(int argc, char* argv[]) {
                         }
 
                         if (avg_halite > 180
-                            && !tooCloseToEnemy
-                            && dist_to_shipyard - dist_to_enemy_shipyard <= 20) {
+                            && !tooCloseToEnemy) {
 
                             vector<int> friendly_dists;
                             for (auto friendly : me->ships) {
@@ -338,11 +337,9 @@ int main(int argc, char* argv[]) {
                                 //auto closest_enemy = game_map->closestEnemyShip(curr);
                                 //int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
                                 if ((friends - enemies) >= -2) {
-                                    if (closest_friend != nullptr) {
-                                        curr_avg_halite = cost;
-                                        best_dropoff = closest_friend;
-                                        best_drop_location = curr;
-                                    }
+                                    curr_avg_halite = cost;
+                                    best_dropoff = closest_friend;
+                                    best_drop_location = curr;
                                 }
                             }
                         }
@@ -410,36 +407,26 @@ int main(int argc, char* argv[]) {
         }
         if (DROPOFF_PLANNED && fake_drop != nullptr) {
             auto drop_loc = fake_drop->position;
-            log::log("HIT");
             save_for_drop = true;
             drop_save_amount = 4000 - 900 - game_map->at(drop_loc)->halite;
             if (return_cash * 0.8 + me->halite + game_map->at(drop_loc)->halite + 900 > 4000) {
                 me->dropoffs[-5] = fake_drop;
                 game_map->closestDropMp.clear();
             }
-            log::log("HIT");
             auto ship = game_map->at(fake_drop)->ship;
-            log::log("HIT");
             if (ship != nullptr && ship->owner == me->id) {
-                log::log("HIT");
                 if (stateMp[ship->id] == RETURNING) {
-                    log::log("HIT");
                     if (me->halite + game_map->at(drop_loc)->halite + ship->halite > 4000) {
-                        log::log("HIT");
                         given_order.insert(ship->id);
                         command_queue.push_back(ship->make_dropoff());
-                        log::log("HIT");
                         game_map->closestDropMp.clear();
                         assigned.insert(ship.get());
-                        log::log("HIT");
                         me->halite -= 4000 - ship->halite - game_map->at(drop_loc)->halite;
-                        log::log("HIT");
                         DROPOFF_PLANNED = false;
                         fake_drop = nullptr;
                     }
                 }
             }
-            log::log("HIT");
         }
 
         log::log("After BFS", turnTimer.elapsed());
@@ -556,7 +543,7 @@ int main(int argc, char* argv[]) {
                 for (int k = 0; k < game_map->width; k++) {
                     auto dest = Position(i, k);
                     auto drop = game_map->closest_dropoff(dest, &game);
-                    //VVI &dropoff_dist = ship_to_dist[drop].dist;
+                    // VVI &dropoff_dist = ship_to_dist[drop].dist;
                     int net_cost_to = dist[dest.x][dest.y];
                     int cost_from = 0; //dropoff_dist[dest.x][dest.y];
                     //int extra_turns = 0; //turns[dest.x][dest.y];
@@ -569,8 +556,8 @@ int main(int argc, char* argv[]) {
                     }
                     // costMatrix.back()[i * game_map->width + k] = c + 1000000;
 
-                    candidate_squares.push_back(make_pair(c + 1000000, dest));
                     while(reps--) {
+                        candidate_squares.push_back(make_pair(c + 1000000, dest));
                         push_heap(candidate_squares.begin(), candidate_squares.end());
                         if ((int)candidate_squares.size() > (int)me->ships.size()) {
                             pop_heap(candidate_squares.begin(), candidate_squares.end());
@@ -631,7 +618,7 @@ int main(int argc, char* argv[]) {
         if (costMatrix.size() != 0) {
             double timelim = 1.8;
             if (IS_DEBUG) {
-                timelim = 0.1;
+                timelim = 0.5;
             }
 
             double remaining = (timelim - turnTimer.elapsed()) / (ship_counter - count);
