@@ -224,7 +224,7 @@ int main(int argc, char* argv[]) {
 
             int turns_to_return = 0;
             if (dirs.size() > 1) {
-                turns_to_return = min(dropReturnCount[drop][dirToInt(dirs[0])], dropReturnCount[drop][dirToInt(dirs[1])]);
+                turns_to_return = max(dropReturnCount[drop][dirToInt(dirs[0])], dropReturnCount[drop][dirToInt(dirs[1])]);
             }
             if (remaining_turns <
                 game_map->calculate_distance(ship->position, drop) + 1 + turns_to_return) {
