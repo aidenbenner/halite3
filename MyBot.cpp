@@ -373,7 +373,7 @@ int main(int argc, char* argv[]) {
             if (DROPOFF_PLANNED) save_for_drop = true;
             if (best_dropoff != nullptr && DROPOFFS_ENABLED) {
                 save_for_drop = true;
-                if (return_cash + me->halite + 900 + game_map->at(best_drop_location)->halite > 4000) {
+                if (return_cash + me->halite + 400 + game_map->at(best_drop_location)->halite > 4000) {
                     DROPOFF_PLANNED = true;
                     fake_drop = std::make_shared<Dropoff>(me->id, -5, best_drop_location.x, best_drop_location.y);
                 }
@@ -383,8 +383,8 @@ int main(int argc, char* argv[]) {
         if (DROPOFF_PLANNED && fake_drop != nullptr) {
             auto drop_loc = fake_drop->position;
             save_for_drop = true;
-            drop_save_amount = 4000 - 900 - game_map->at(drop_loc)->halite;
-            if (return_cash + me->halite + game_map->at(drop_loc)->halite + 999 > 4000) {
+            drop_save_amount = 4000 - 500 - game_map->at(drop_loc)->halite;
+            if (return_cash + me->halite + game_map->at(drop_loc)->halite + 500 > 4000) {
                 me->dropoffs[-5] = fake_drop;
                 game_map->closestDropMp.clear();
             }
@@ -407,20 +407,48 @@ int main(int argc, char* argv[]) {
         log::log("After BFS", turnTimer.elapsed());
         set<EntityId> added;
 
+        // RETURNING SHIPS
+        // - need to know which ships can return to the fake dropoff
+        // -
         int non_close_sum = 0;
+
+        vector<pair<int, EntityId>> retships_by_closest;
         for (const auto &ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             if (assigned.count(ship.get())) continue;
             auto state = stateMp[ship->id];
-            if (state == RETURNING) {
-                auto mdest = game_map->closest_dropoff(ship->position, &game);
-                if (fake_drop != nullptr) {
-                    if (fake_drop->position != mdest) {
-                        non_close_sum += ship->halite;
+            if (state != RETURNING) continue;
+
+            // Find turns to the closest non-fake drop
+            auto closest_drop = me->shipyard->position;
+            int closest_drop_dist = 10000;
+            for (auto dropoff : me->dropoffs) {
+                if (dropoff.second->is_fake) {
+
+                }
+                else {
+                    int dist = game_map->calculate_distance(dropoff.second->position, ship->position);
+                    if (dist < closest_drop_dist) {
+                        closest_drop_dist = dist;
+                        closest_drop = dropoff.second->position;
                     }
                 }
             }
+            retships_by_closest.push_back({closest_drop_dist,ship->id});
         }
+
+        std::sort(retships_by_closest.begin(), retships_by_closest.end());
+
+        set<EntityId> can_see_fake_drop;
+        for (auto r : retships_by_closest) {
+            auto ship = me->ships[r.second];
+            if (me->halite + non_close_sum > drop_save_amount) {
+                can_see_fake_drop.insert(ship->id);
+            }
+            non_close_sum += ship->halite;
+        }
+
+
         for (const auto &ship_iterator : me->ships) {
             shared_ptr<Ship> ship = ship_iterator.second;
             if (assigned.count(ship.get())) continue;
@@ -431,7 +459,7 @@ int main(int argc, char* argv[]) {
                 Position best_drop = me->shipyard->position;
                 int best_cost = game_map->calculate_distance(me->shipyard->position, ship->position);
                 for (auto dropoff : me->dropoffs) {
-                    if (non_close_sum + me->halite < drop_save_amount) {
+                    if (can_see_fake_drop.count(ship->id) == 0) {
                         if (dropoff.second->is_fake) continue;
                     }
                     int dist = game_map->calculate_distance(ship->position, dropoff.second->position);
