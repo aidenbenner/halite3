@@ -427,7 +427,11 @@ int main(int argc, char* argv[]) {
 
                 }
                 else {
-                    int dist = game_map->calculate_distance(dropoff.second->position, ship->position);
+                    VVP &pars = col_ship_to_dist[ship->position].parent;
+                    int dist = game_map->getPathLength(pars, ship->position, dropoff.second->position);
+                    if (dist == -1) {
+                        dist = 5 * game_map->calculate_distance(ship->position, dropoff.second->position);
+                    }
                     if (dist < closest_drop_dist) {
                         closest_drop_dist = dist;
                         closest_drop = dropoff.second->position;
@@ -455,6 +459,7 @@ int main(int argc, char* argv[]) {
             auto state = stateMp[ship->id];
             auto mdest = game_map->closest_dropoff(ship->position, &game);
 
+            VVP &pars = col_ship_to_dist[ship->position].parent;
             if (state != SUPER_RETURN) {
                 Position best_drop = me->shipyard->position;
                 int best_cost = game_map->calculate_distance(me->shipyard->position, ship->position);
@@ -462,7 +467,10 @@ int main(int argc, char* argv[]) {
                     if (can_see_fake_drop.count(ship->id) == 0) {
                         if (dropoff.second->is_fake) continue;
                     }
-                    int dist = game_map->calculate_distance(ship->position, dropoff.second->position);
+                    int dist = game_map->getPathLength(pars, ship->position, dropoff.second->position);
+                    if (dist == -1) {
+                        dist = 5 * game_map->calculate_distance(ship->position, dropoff.second->position);
+                    }
                     if (dist < best_cost) {
                         best_cost = dist;
                         best_drop = dropoff.second->position;
@@ -473,7 +481,6 @@ int main(int argc, char* argv[]) {
 
 
             vector<Direction> options;
-            VVP &pars = col_ship_to_dist[ship->position].parent;
             options = game_map->minCostOptions(pars, ship->position, mdest);
 
             if (state == RETURNING) {

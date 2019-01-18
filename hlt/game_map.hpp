@@ -121,7 +121,9 @@ namespace hlt {
 
         vector<Direction> plan_min_cost_route(VVP parents, int starting_halite, Position start, Position dest, int time = 1);
 
-        vector<Direction> minCostOptions(VVP pos, Position start, Position dest);
+        vector<Direction> minCostOptions(VVP &pos, Position start, Position dest);
+
+        int getPathLength(VVP &pars, Position start, Position dest);
 
         int calculate_distance(const Position& source, const Position& target);
 

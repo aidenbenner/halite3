@@ -756,7 +756,26 @@ vector<Direction> GameMap::plan_min_cost_route(VVP parents, int starting_halite,
     return minCostOptions(parents, start, dest);
 }
 
-vector<Direction> GameMap::minCostOptions(VVP pos, Position start, Position dest) {
+
+int GameMap::getPathLength(VVP &pos, Position start, Position dest) {
+    if (start == dest) {
+        return 1;
+    }
+    if (pos[dest.x][dest.y] == Position {-1, -1}) {
+        return -1;
+    }
+    Position curr = dest;
+    int length = 0;
+    while (curr != start) {
+        auto tmp = pos[curr.x][curr.y];
+        curr = tmp;
+        length++;
+    }
+
+    return length;
+}
+
+vector<Direction> GameMap::minCostOptions(VVP &pos, Position start, Position dest) {
     if (start == dest) {
         return vector<Direction>(1, Direction::STILL);
     }
