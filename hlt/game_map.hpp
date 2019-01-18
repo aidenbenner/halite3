@@ -91,7 +91,7 @@ namespace hlt {
 
         Direction getDirectDiff(Position a, Position b);
 
-        BFSR BFS(Position source, bool greedy=false, int starting_hal=0);
+        BFSR BFS(Position source, bool collide=false, int starting_hal=0);
 
         vector<Position> traceBackPath(VVP parents, Position start, Position dest);
 

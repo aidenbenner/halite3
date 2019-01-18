@@ -243,11 +243,13 @@ int main(int argc, char* argv[]) {
 
         log::log("Before BFS", turnTimer.elapsed());
         map<Position, BFSR> ship_to_dist;
+        map<Position, BFSR> col_ship_to_dist;
         map<Position, BFSR> &greedy_bfs = ship_to_dist;
 
         ship_to_dist.clear();
         for (auto s : me->ships) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
+            col_ship_to_dist[s.second->position] = game_map->BFS(s.second->position, true);
         }
         for (auto s : me->dropoffs) {
             ship_to_dist[s.second->position] = game_map->BFS(s.second->position);
@@ -255,13 +257,54 @@ int main(int argc, char* argv[]) {
 
         set<EntityId> given_order;
         log::log("Time -- Before dropoffs", turnTimer.elapsed());
-        if (fake_drop != nullptr && DROPOFF_PLANNED) {
-            auto structure = game_map->at(fake_drop)->structure;
-            if (structure != nullptr) {
-                if (structure->owner != me->id) {
-                    fake_drop = nullptr;
-                    DROPOFF_PLANNED = false;
+        // Cancel a dropoff
+
+        auto dropoff_permissible = [&](Position curr) -> bool {
+            if (game_map->at(curr)->has_structure()) return false;
+            float avg_halite = game_map->avg_around_point(curr, 4);
+            if (avg_halite > 180 && remaining_turns > 120) {
+                bool tooCloseToEnemy = false;
+                auto enemyDrop = game_map->closest_enemy_dropoff(curr, &game);
+                int enemyDist = game_map->calculate_distance(curr, enemyDrop);
+                if (!is_1v1) {
+                    tooCloseToEnemy |= enemyDist <= 6;
+                    if (tooCloseToEnemy) return false;
                 }
+
+                vector<int> frdists;
+                vector<int> endists;
+                for (auto p : game.players) {
+                    for (auto f : p->ships) {
+                        vector<int>& fdists = endists;
+                        if (p->id == me->id) {
+                            fdists = frdists;
+                        }
+                        fdists.push_back(game_map->calculate_distance(f.second->position, curr));
+                        push_heap(fdists.begin(), fdists.end());
+                        if (fdists.size() > 4) {
+                            pop_heap(fdists.begin(), fdists.end());
+                            fdists.pop_back();
+                        }
+                    }
+                }
+
+                int favg = 0;
+                int eavg = 0;
+                if (endists.size() >= 4 && frdists.size() >= 4) {
+                    for (int i = 0; i<4; i++) {
+                        favg += frdists.at(i);
+                        eavg += endists.at(i);
+                    }
+                }
+                return favg <= eavg;
+            }
+            return false;
+        };
+
+        if (fake_drop != nullptr && DROPOFF_PLANNED) {
+            if (!dropoff_permissible(fake_drop->position)) {
+                fake_drop = nullptr;
+                DROPOFF_PLANNED = false;
             }
         }
         if (DROPOFFS_ENABLED && !DROPOFF_PLANNED) {
@@ -286,7 +329,7 @@ int main(int argc, char* argv[]) {
 
                     int dist_to_shipyard = game_map->calculate_distance(me->shipyard->position, curr);
 
-                    if (drop_dist >= 15
+                    if (drop_dist >= 10
                         && curr_dropoffs < expected_dropoffs
                         && remaining_turns > 120) {
                         float avg_halite = game_map->avg_around_point(curr, 4) - sqrt(dist_to_shipyard) / 1000.0;
@@ -300,50 +343,16 @@ int main(int argc, char* argv[]) {
 
                         if (avg_halite > 180
                             && !tooCloseToEnemy
-                            && dist_to_shipyard - dist_to_enemy_shipyard <= 10) {
-                            //log::flog(log::Log{game.turn_number - 1, curr.x, curr.y, "could drop" + to_string(avg_halite), "#00FFFF"});
-                            auto closest_friend = game_map->closestFriendlyShip(curr);
-                            if (closest_friend == nullptr) continue;
-                            //int friendly_dist = game_map->calculate_distance(closest_friend->position, curr);
-                            //int enemies = game_map->enemies_around_point(curr, 4);
-                            //int friends = game_map->friends_around_point(curr, 4);
-
-                            vector<int> frdists;
-                            vector<int> endists;
-                            for (auto p : game.players) {
-                                for (auto f : p->ships) {
-                                    vector<int>& fdists = endists;
-                                    if (p->id == me->id) {
-                                        fdists = frdists;
-                                    }
-                                    fdists.push_back(game_map->calculate_distance(f.second->position, curr));
-                                    push_heap(fdists.begin(), fdists.end());
-                                    if (fdists.size() > 2) {
-                                        pop_heap(fdists.begin(), fdists.end());
-                                        fdists.pop_back();
-                                    }
-                                }
-                            }
-
-                            int favg = 0;
-                            int eavg = 0;
-                            if (endists.size() >= 2 && frdists.size() >= 2) {
-                                for (int i = 0; i<2; i++) {
-                                    favg += frdists.at(i);
-                                    eavg += endists.at(i);
-                                }
-                            }
-
+                            && dist_to_shipyard - dist_to_enemy_shipyard <= 10
+                            && dropoff_permissible(curr)) {
 
                             double cost = game_map->sum_around_point(curr, 4);
                             if (curr_avg_halite < cost) {
                                 //auto closest_enemy = game_map->closestEnemyShip(curr);
                                 //int enemy_dist = game_map->calculate_distance(closest_enemy->position, curr);
-                                if (favg <= eavg) {
-                                    curr_avg_halite = cost;
-                                    best_dropoff = closest_friend;
-                                    best_drop_location = curr;
-                                }
+                                curr_avg_halite = cost;
+                                best_dropoff = game_map->closestFriendlyShip(curr);
+                                best_drop_location = curr;
                             }
                         }
                     }
@@ -369,79 +378,25 @@ int main(int argc, char* argv[]) {
                     fake_drop = std::make_shared<Dropoff>(me->id, -5, best_drop_location.x, best_drop_location.y);
                 }
                 log::flog(log::Log{game.turn_number - 1, best_drop_location.x, best_drop_location.y, "best drop", "#00FF00"});
-                /*
-                int dist = game_map->calculate_distance(best_drop_location, best_dropoff->position);
-                stateMp[best_dropoff->id] = ShipState::DROPOFF;
-
-                log::log(best_drop_location);
-                log::log("is the best ", best_dropoff->id);
-                Order o{10, GATHERING, best_dropoff, best_drop_location};
-                log::log(best_dropoff->position);
-                auto options = game_map->minCostOptions(ship_to_dist[best_dropoff->position].parent, best_dropoff->position, best_drop_location);
-
-                int cost = 10;
-                o.setAllCosts(1e6);
-                for (auto dir : options) {
-                    o.add_dir_priority(dir, cost);
-                    cost *= 10;
-                }
-
-                ordersMap[best_dropoff->id] = o;
-
-                save_for_drop = true;
-                drop_save_amount = 4000 - best_dropoff->halite + 100 - game_map->at(best_drop_location)->halite;
-                if (return_cash * 0.8 + me->halite + game_map->at(best_drop_location)->halite + best_dropoff->halite > 4000) {
-                    auto ship = best_dropoff;
-                    me->dropoffs[(int) -best_dropoff->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x,
-                                                                              ship->position.y);
-                    me->dropoffs[(int) -best_dropoff->id]->is_fake = true;
-                }
-                if (dist == 0) {
-                    if (me->halite + best_dropoff->halite >= constants::DROPOFF_COST) {
-                        auto ship = best_dropoff;
-                        me->dropoffs[(int) -ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x,
-                                                                                  ship->position.y);
-                        given_order.insert(ship->id);
-                        command_queue.push_back(ship->make_dropoff());
-                        assigned.insert(ship);
-                        game_map->closestDropMp.clear();
-                        me->halite -= 4000;
-                    } else {
-                        auto ship = best_dropoff;
-                        me->dropoffs[(int) -ship->id] = std::make_shared<Dropoff>(me->id, -ship->id, ship->position.x,
-                                                                                  ship->position.y);
-                        me->dropoffs[(int) -ship->id]->is_fake = true;
-                        save_for_drop = true;
-                    }
-                }*/
             }
         }
         if (DROPOFF_PLANNED && fake_drop != nullptr) {
             auto drop_loc = fake_drop->position;
-            log::log("HIT");
             save_for_drop = true;
             drop_save_amount = 4000 - 900 - game_map->at(drop_loc)->halite;
             if (return_cash + me->halite + game_map->at(drop_loc)->halite + 999 > 4000) {
                 me->dropoffs[-5] = fake_drop;
                 game_map->closestDropMp.clear();
             }
-            log::log("HIT");
             auto ship = game_map->at(fake_drop)->ship;
-            log::log("HIT");
             if (ship != nullptr && ship->owner == me->id) {
-                log::log("HIT");
                 if (stateMp[ship->id] == RETURNING) {
-                    log::log("HIT");
                     if (me->halite + game_map->at(drop_loc)->halite + ship->halite > 4000) {
-                        log::log("HIT");
                         given_order.insert(ship->id);
                         command_queue.push_back(ship->make_dropoff());
-                        log::log("HIT");
                         game_map->closestDropMp.clear();
                         assigned.insert(ship.get());
-                        log::log("HIT");
                         me->halite -= 4000 - ship->halite - game_map->at(drop_loc)->halite;
-                        log::log("HIT");
                         DROPOFF_PLANNED = false;
                         fake_drop = nullptr;
                     }
@@ -490,7 +445,7 @@ int main(int argc, char* argv[]) {
 
 
             vector<Direction> options;
-            VVP &pars = ship_to_dist[ship->position].parent;
+            VVP &pars = col_ship_to_dist[ship->position].parent;
             options = game_map->minCostOptions(pars, ship->position, mdest);
 
             if (state == RETURNING) {

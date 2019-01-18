@@ -475,7 +475,7 @@ BFSR GameMap::BFSToDrop(Position source) {
     return BFSR{dist, parent, turns};
 }*/
 
-BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
+BFSR GameMap::BFS(Position source, bool collide, int starting_hal) {
     // dfs out of source to the entire map
     for (int i = 0; i<64; i++) {
         for (int k = 0; k<64; k++) {
@@ -484,8 +484,6 @@ BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
     }
 
     int def = 1e8;
-    if (greedy)
-        def = -1e8;
 
     vector<vector<int>> dist(width,vector<int>(height, def));
     vector<vector<Position>> parent(width,vector<Position>(height, {-1, -1}));
@@ -511,6 +509,9 @@ BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
             }
 
             visited[p.x][p.y] = true;
+            if (collide && at(p)->occupied_by_enemy()) {
+                continue;
+            }
 
             for (auto d : ALL_CARDINALS) {
                 auto f = normalize(p.directional_offset(d));
@@ -519,29 +520,9 @@ BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
                     continue;
                 }
                 int c = at(f)->cost() + dist[f.x][f.y];
-                if (greedy) {
-                    int t = 1;
-                    c = at(f)->halite + dist[f.x][f.y];
-                    /*
-                    if (at(f)->halite < get_mine_threshold()) {
-                        c = dist[f.x][f.y];
-                        t = turns[f.x][f.y];
-                    }
-                    else {
-                        c = 0.25 * at(f)->halite + dist[f.x][f.y];
-                        t = turns[f.x][f.y] + 1;
-                    }*/
-                    if (c >= dist[p.x][p.y]) {
-                        turns[p.x][p.y] = t;
-                        dist[p.x][p.y] = c;
-                        parent[p.x][p.y] = f;
-                    }
-                }
-                else {
-                    if (c <= dist[p.x][p.y]) {
-                        dist[p.x][p.y] = c;
-                        parent[p.x][p.y] = f;
-                    }
+                if (c <= dist[p.x][p.y]) {
+                    dist[p.x][p.y] = c;
+                    parent[p.x][p.y] = f;
                 }
             }
         }
@@ -780,7 +761,7 @@ vector<Direction> GameMap::minCostOptions(VVP pos, Position start, Position dest
         return vector<Direction>(1, Direction::STILL);
     }
     if (pos[dest.x][dest.y] == Position {-1, -1}) {
-        assert(false);
+        //assert(false);
         return get_unsafe_moves(start, dest);
     }
     Position curr = dest;
