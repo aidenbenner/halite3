@@ -418,6 +418,18 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
 Direction GameMap::get_random_dir_towards(Position start, Position end) {
     auto moves = get_unsafe_moves(start, end);
+    if (moves.size() == 0) {
+        moves.push_back(moves[0]);
+        moves.push_back(Direction::STILL);
+        if (moves[0] == Direction::NORTH || moves[0] == Direction::SOUTH) {
+            moves.push_back(Direction::WEST);
+            moves.push_back(Direction::EAST);
+        }
+        else {
+            moves.push_back(Direction::NORTH);
+            moves.push_back(Direction::SOUTH);
+        }
+    }
     moves.push_back(Direction::STILL);
     //if (rand() % 10) {
     //    return ALL_CARDINALS[rand() % 4];
