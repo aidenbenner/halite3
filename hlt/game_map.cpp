@@ -264,6 +264,10 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
     Direction best_move = Direction::STILL;
     double best_cost = -1000000;
     int best_turns = 1;
+    if (calculate_distance(start,dest) == 0) {
+        order.add_dir_priority(Direction::STILL, 1);
+        return {Direction::STILL, (double)at(dest)->halite * 0.25, 1};
+    }
 
     auto closest_enemy = closestEnemyShip(dest);
     int turns_to_enemy = calculate_distance(closest_enemy->position, dest);
@@ -283,7 +287,7 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
     while (i < itrs + 1) {
         if (time_bank != 0 && timer.elapsed() > time_bank) {
             log::log("breaking cause time bank");
-            log::log(timer.elapsed(), time_bank, i, itrs);
+            log::log(timer.elapsed(), time_bank);
             break;
         }
         i++;
@@ -299,17 +303,39 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         vector<Position> path;
         bool did_break = false;
         while (dest != curr) {
+            //int enemies = enemies_around_point(curr, 5);
+            //int friends = friends_around_point(curr, 5);
+
+            /*
+            if (is_inspired(curr, constants::PID)) {
+                if (game->players.size() == 2 && turns < 7) {
+                    curr_square_hal += curr_square_hal * (friends - enemies) / 4.0;
+                }
+                else if (game->players.size() == 4) {
+                    curr_square_hal += curr_square_hal * (friends) / 9.0;
+                }
+            }*/
+
             path.push_back(curr);
             auto move = get_random_dir_towards(curr, dest);
-            if (at(dest)->has_structure()) {
-                if (at(dest)->structure->owner == game->me->id) {
-                    curr_halite -= 200;
-                }
-            }
 
-            if (curr_halite < floor(curr_square_hal * 0.1) || move == Direction::STILL) {
+            /*
+            if (at(curr)->occupied_by_not(constants::PID)) {
+                int enemy_hal = at(curr)->ship->halite;
+                if (should_collide(curr, order.ship)) {
+                    if (game->players.size() == 4) {
+                        curr_halite += enemy_hal / 2;
+                    }
+                    else {
+                        curr_halite += enemy_hal;
+                    }
+                }
+            }*/
+
+            if (curr_halite < curr_square_hal * 0.1 || move == Direction::STILL) {
                 move = Direction::STILL;
                 if ((is_inspired(curr, constants::PID) || likely_inspired(curr, turns))) {
+                    // log::log("is inspired");
                     curr_halite += ceil(2 * curr_square_hal * 0.25);
                 }
                 curr_halite += ceil(curr_square_hal * 0.25);
@@ -331,7 +357,6 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 break;
             }
         }
-
         if (at(curr)->occupied_by_not(constants::PID)) {
             int enemy_hal = at(curr)->ship->halite;
             if (game->players.size() == 4) {
@@ -341,9 +366,8 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
                 curr_halite += enemy_hal;
             }
         }
-
-        int dest_halite = ceil(at(dest)->halite * 0.25);
-        int remaining_hal = floor(at(dest)->halite * 0.75);
+        int dest_halite = at(dest)->halite * 0.25;
+        int remaining_hal = at(dest)->halite * 0.75;
         turns++;
         if (is_inspired(dest, constants::PID) || likely_inspired(dest, turns)) {
             dest_halite *= 3;
@@ -356,18 +380,22 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
         if (abs(turns - turns_to_enemy) <= 1) {
         }
 
+        //auto drop = closest_dropoff(curr, game);
+        //int turns_back = calculate_distance(curr, drop);
+        //turns += turns_back;
         double c = (dest_halite + curr_halite - starting_halite) / turns;
 
-        for (int i = 1; i<=10; i++) {
+        for (int i = 1; i<=6; i++) {
             if (did_break) break;
-            dest_halite += ceil(0.25 * remaining_hal);
+            dest_halite += 0.25 * remaining_hal;
             if (is_inspired(dest, constants::PID) || likely_inspired(dest, turns + i)) {
-                dest_halite += ceil(0.5 * remaining_hal);
+                dest_halite += 0.5 * remaining_hal;
             }
-            remaining_hal = floor(remaining_hal * 0.75);
+            remaining_hal *= 0.75;
             c = fmax(c, (dest_halite + curr_halite - starting_halite) / (turns + i));
         }
 
+        //log::log(i, calculate_distance(start, dest), curr_halite, turns, c, first_move);
         if (!costMp.count(first_move)) costMp[first_move] = c;
         costMp[first_move] = fmax(costMp[first_move], c);
         if (c > best_cost) {
@@ -390,21 +418,22 @@ RandomWalkResult GameMap::get_best_random_walk(int starting_halite, Position sta
 
 Direction GameMap::get_random_dir_towards(Position start, Position end) {
     auto moves = get_unsafe_moves(start, end);
-    if (moves.size() == 1) {
+    if (moves.size() == 0) {
+        moves.push_back(moves[0]);
+        moves.push_back(Direction::STILL);
         if (moves[0] == Direction::NORTH || moves[0] == Direction::SOUTH) {
-            moves.push_back(moves[0]);
-            moves.push_back(Direction::STILL);
             moves.push_back(Direction::WEST);
             moves.push_back(Direction::EAST);
         }
         else {
-            moves.push_back(moves[0]);
-            moves.push_back(Direction::STILL);
             moves.push_back(Direction::NORTH);
             moves.push_back(Direction::SOUTH);
         }
     }
     moves.push_back(Direction::STILL);
+    //if (rand() % 10) {
+    //    return ALL_CARDINALS[rand() % 4];
+    //}
     return moves[rand() % moves.size()];
 }
 
@@ -458,7 +487,7 @@ BFSR GameMap::BFSToDrop(Position source) {
     return BFSR{dist, parent, turns};
 }*/
 
-BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
+BFSR GameMap::BFS(Position source, bool collide, int starting_hal) {
     // dfs out of source to the entire map
     for (int i = 0; i<64; i++) {
         for (int k = 0; k<64; k++) {
@@ -466,10 +495,7 @@ BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
         }
     }
 
-    greedy = false;
     int def = 1e8;
-    if (greedy)
-        def = -1e8;
 
     vector<vector<int>> dist(width,vector<int>(height, def));
     vector<vector<Position>> parent(width,vector<Position>(height, {-1, -1}));
@@ -495,6 +521,9 @@ BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
             }
 
             visited[p.x][p.y] = true;
+            if (collide && at(p)->occupied_by_enemy()) {
+                continue;
+            }
 
             for (auto d : ALL_CARDINALS) {
                 auto f = normalize(p.directional_offset(d));
@@ -503,29 +532,9 @@ BFSR GameMap::BFS(Position source, bool greedy, int starting_hal) {
                     continue;
                 }
                 int c = at(f)->cost() + dist[f.x][f.y];
-                if (greedy) {
-                    int t = 1;
-                    c = at(f)->halite + dist[f.x][f.y];
-                    /*
-                    if (at(f)->halite < get_mine_threshold()) {
-                        c = dist[f.x][f.y];
-                        t = turns[f.x][f.y];
-                    }
-                    else {
-                        c = 0.25 * at(f)->halite + dist[f.x][f.y];
-                        t = turns[f.x][f.y] + 1;
-                    }*/
-                    if (c >= dist[p.x][p.y]) {
-                        turns[p.x][p.y] = t;
-                        dist[p.x][p.y] = c;
-                        parent[p.x][p.y] = f;
-                    }
-                }
-                else {
-                    if (c <= dist[p.x][p.y]) {
-                        dist[p.x][p.y] = c;
-                        parent[p.x][p.y] = f;
-                    }
+                if (c <= dist[p.x][p.y]) {
+                    dist[p.x][p.y] = c;
+                    parent[p.x][p.y] = f;
                 }
             }
         }
@@ -759,12 +768,31 @@ vector<Direction> GameMap::plan_min_cost_route(VVP parents, int starting_halite,
     return minCostOptions(parents, start, dest);
 }
 
-vector<Direction> GameMap::minCostOptions(VVP pos, Position start, Position dest) {
+
+int GameMap::getPathLength(VVP &pos, Position start, Position dest) {
+    if (start == dest) {
+        return 1;
+    }
+    if (pos[dest.x][dest.y] == Position {-1, -1}) {
+        return -1;
+    }
+    Position curr = dest;
+    int length = 0;
+    while (curr != start) {
+        auto tmp = pos[curr.x][curr.y];
+        curr = tmp;
+        length++;
+    }
+
+    return length;
+}
+
+vector<Direction> GameMap::minCostOptions(VVP &pos, Position start, Position dest) {
     if (start == dest) {
         return vector<Direction>(1, Direction::STILL);
     }
     if (pos[dest.x][dest.y] == Position {-1, -1}) {
-        assert(false);
+        //assert(false);
         return get_unsafe_moves(start, dest);
     }
     Position curr = dest;
@@ -1003,7 +1031,8 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     return false;
 }
 
-double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position &shipyard, Position &dest, bool is_1v1, Game &g) {
+double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1,
+                       int extra_turns, Game &g, double future_ship_val) {
     if (dest == shipyard) return 10000000;
 
     double bonus = 1;
@@ -1011,21 +1040,27 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position &shipyard, 
     int halite = at(dest)->halite;
     int turns_to = calculate_distance(s->position, dest);
     int turns_back = calculate_distance(dest, shipyard);
-    int turns = fmax(1.0, turns_to + turns_back);
-    if (!is_1v1) {
-        turns = turns_to + turns_back;
-    }
 
+    /*
+    int avg_bonus = avg_around_point(dest, 5);
+    if (avg_bonus > 100) {
+        //bonus = (avg_bonus / 150.0) * 3.0;
+    }*/
     int avg_amount = avg_around_point(dest, 3);
     bonus = max(1.0, min(4.0, 3.0 * avg_amount / 150.0));
 
     int shipyard_bonus = avg_around_point(shipyard, 3);
-    if (shipyard_bonus > 150 && turns_back <= 3) {
+    if (shipyard_bonus > 150) {
         bonus += 3;
     }
 
     int enemies = enemies_around_point(dest, 5);
     int friends = friends_around_point(dest, 5);
+
+    int turns = fmax(1.0, turns_to + turns_back);
+    if (!is_1v1) {
+        turns = turns_to + turns_back;
+    }
 
     /*
     auto enemyDrop = closest_enemy_dropoff(dest, game);
@@ -1066,14 +1101,13 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position &shipyard, 
         halite *= 1.5;
     }*/
 
-    auto enemy = enemy_in_range(dest, constants::PID);
-    if (enemy != nullptr) {
-        if (should_collide(dest, s, enemy)) {
+    if (at(dest)->occupied_by_not(pid)) {
+        if (should_collide(dest, s)) {
             if (is_1v1) {
-                halite += enemy->halite;
+                halite += at(dest)->ship->halite;
             }
             if (!is_1v1) {
-                halite += enemy->halite;
+                halite += at(dest)->ship->halite;
                 halite *= (0.5 + game->turn_number / ((double)constants::MAX_TURNS * 2.0));
             }
         } else {
@@ -1087,12 +1121,12 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position &shipyard, 
 
     // grouping bonus
     // halite *= (1.0 + (friends - enemies) / 5.0);
-    if (is_inspired(dest, constants::PID)) {
+    if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
         if (is_1v1 && turns_to < 6) {
             bonus += 1 + (1 + friends - enemies);
             inspired = true;
         }
-        else if (!is_1v1) {
+        else if (!is_1v1 && turns_to < 6) {
             bonus += 1 + (1 + friends - enemies);
             //halite += halite * (friends - enemies) / 4.0;
             //bonus += (friends) / 8.0;
@@ -1107,20 +1141,23 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position &shipyard, 
     int curr_hal = s->halite;
     double out = -1000;
     int mined = 0;
-
-    mined += halite;
-    if (inspired) {
-        mined *= 3;
-        //mined += halite * 0.5;
+    for (int i = 0; i<5; i++) {
+        mined += halite * 0.25;
+        if (inspired) {
+            mined += halite * 0.5;
+        }
+        halite *= 0.75;
+        if (mined + curr_hal > 1000) {
+            mined = 1000 - curr_hal;
+        }
+        int c = max(0, mined - to_cost);
+        double cout = (c) / ((double)1 + turns + i);
+        /*
+        if (is_1v1) {
+            cout -= num_inspired(dest, pid) / (double)(turns + i);
+        }*/
+        out = max(cout, out);
     }
-    halite *= 0.75;
-
-    if (mined + curr_hal > 1000) {
-        mined = 1000 - curr_hal;
-    }
-    int c = max(0, 10 * mined - to_cost - home_cost);
-    double cout = (c) / ((double)turns);
-    out = max(cout, out);
 
     bonus = fmax(bonus, 1);
     return -bonus * out;
