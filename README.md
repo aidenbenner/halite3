@@ -4,10 +4,9 @@ ran by two sigma. I came 7th overall and was the highest ranked undergraduate
 student. 
 
 This was the first AI competition i've ever participated in and had a lot of fun.
-The community surrounding the game was fantastic and very open and helpful.
 
 Here is more information about the game https://halite.io/
-And here is my player page https://halite.io/user/?user_id=1185
+Here is my player page https://halite.io/user/?user_id=1185
 
 # Post-Mortem
 
@@ -50,7 +49,6 @@ regret not investing more into tooling overall especially after seeing tooling u
 
 Stats page from mlombs fantastic site 
 [stats](https://i.imgur.com/HdrNwFd.png)
-
 
 Overall halite was a fantastic competition that I spent far too much time on.
 I plan to play again next year.
