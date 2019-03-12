@@ -11,15 +11,16 @@ And here is my player page https://halite.io/user/?user_id=1185
 
 # Post-Mortem
 
+Here is a screen cap of my bot in action.
+![Halite](https://i.imgur.com/TmiKKkw.png)
+
 Before reading you should read the overview of the rules for halite 3 from 
 the page above. Halite 3 is a resource management game.
 
-At a highlevel here is the overview of my bot.
-
+# Gathering and Core
 Ships are assigned roles based on their current state. The roles are
 gathering, returning, or end of game returning.
 
-# Gathering and Core
 Gathering ships score each square according to a somewhat complicated 
 cost function that essentially represents the halite / turn if that turtle
 decided to path their, pickup most of the halite and return to the nearest dropoff.
@@ -39,6 +40,12 @@ Dropoffs were the main improvement to my bot in the mid to late season.
 I saw significant improvements once I implemented a system for ships to plan dropoffs
 in the future and make gathering/returning decisions based on dropoffs that haven't
 even been created yet. That being said my heuristic to actually plan the dropoff was pretty dumb. I planned a dropoff at the square with the max halite in a manhattan radius of 4 as long as it wasn't too close to enemies or an enemy dropoff.
+
+# Tooling
+
+I used flourine for offline replay viewing which was a big help. I also added 
+debug visualizations using flog to visualize targetting and dropoff placement. I do
+regret not investing more into tooling overall especially after seeing tooling used by other competitors.
 
 
 Stats page from mlombs fantastic site 
