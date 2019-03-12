@@ -3,6 +3,9 @@ This is the code used to run the bot I wrote for the Halite III AI competition
 ran by two sigma. I came 7th overall and was the highest ranked undergraduate
 student. 
 
+_Disclaimer:_ this is not clean code. A lot of things are hacky with 0 documentation because
+I was the only one working on this project.
+
 This was the first AI competition i've ever participated in and I had a lot of fun.
 I spent about 4 months working on my bot.
 
