@@ -3,7 +3,8 @@ This is the code used to run the bot I wrote for the Halite III AI competition
 ran by two sigma. I came 7th overall and was the highest ranked undergraduate
 student. 
 
-This was the first AI competition i've ever participated in and had a lot of fun.
+This was the first AI competition i've ever participated in and I had a lot of fun.
+I spent about 4 months working on my bot.
 
 Here is more information about the game https://halite.io/
 Here is my player page https://halite.io/user/?user_id=1185
@@ -18,14 +19,13 @@ Here is a screen cap of my bot in action.
 that smash mine typically.) One thing you 
 can even notice from a single screen cap of the game is that *it's really hard
 to figure out what's going on*. I think this was an interesting challenge
-in Halite. Playing against the top players there would be games you would just lose and have no idea why you lost them.
-
-There was never any 'secret sauce' for this game. At the beginning I assumed
+in Halite. When playing against the top players there would be games you would just lose and have no idea why you lost them besides
+the fact that they just 'mined better than you'. There was never any 'secret sauce' for this game. At the beginning I assumed
 the top players were doing some magic path calculation that I was missing completely
 but really it seems everyone used pretty simple heuristics to model each part of the game
-(including myself).
-In general there isn't a ton of high level strategic depth to the game beyond 
-
+(including myself) and then just did a ton of tuning.
+In general there isn't a ton of high level strategic depth to the game beyond 'mine as much as you can as fast as you can', and most of 
+the evaluation of moves for a given turtle can be done in a fairly small local context.
 
 # Gathering and Core
 Ships are assigned roles based on their current state. The roles are
@@ -65,8 +65,13 @@ even been created yet. That being said my heuristic to actually plan the dropoff
 # Dispatch
 After each ship has a destination, they generate x random walks towards their destination
 and take the walk that gives the best halite/turn. 
-Each ship scores each direction by the amount they want to go there.
-Since we never want to make a move where our turtles would collide (except for the end of the match) 
+Each ship assigns a cost to each direction based on how badly it wants to move/not move there.
+Since we never want to make a move where our turtles would collide (except for the end of the match), we can use the Hungarian algorithm again to resolve
+the min cost set of moves for all our ships with a 1 turn lookahead while avoiding collisions completely.
+
+Through coincidence several other competitors used something very similar. I recommend reading cowzow's post mortem as he describe
+how this works in more detail.
+https://github.com/dzou/halite3
 
 # Ship spawning
 Copy catting ship spawns in 2p seemed like a pretty good 'never be worse strategy'. I would permit overbuilding ships by about 4-5 over my opponent in 2p and use the
