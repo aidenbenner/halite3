@@ -1041,11 +1041,6 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     int turns_to = calculate_distance(s->position, dest);
     int turns_back = calculate_distance(dest, shipyard);
 
-    /*
-    int avg_bonus = avg_around_point(dest, 5);
-    if (avg_bonus > 100) {
-        //bonus = (avg_bonus / 150.0) * 3.0;
-    }*/
     int avg_amount = avg_around_point(dest, 3);
     bonus = max(1.0, min(4.0, 3.0 * avg_amount / 150.0));
 
@@ -1061,45 +1056,6 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
     if (!is_1v1) {
         turns = turns_to + turns_back;
     }
-
-    /*
-    auto enemyDrop = closest_enemy_dropoff(dest, game);
-    int enemies_around_drop = enemies_around_point(enemyDrop, 5);
-    int hal_around_enemy_drop = avg_around_point(shipyard, 5);
-    int dist_to_enemy_drop = calculate_distance(enemyDrop, dest);
-    if (dist_to_enemy_drop <= 5 && enemies_around_drop < 4 && is_1v1 && hal_around_enemy_drop > 155) {
-        //halite *= 3;
-    }*/
-
-    /*
-    int dist_to_enemy_yard = 100;
-    int yard_dist = calculate_distance(game->me->shipyard->position, dest);
-    for (auto p : game->players) {
-        if (p->id == game->me->id) continue;
-        min(dist_to_enemy_yard, calculate_distance(dest, p->shipyard->position));
-    }
-
-    int diff = dist_to_enemy_yard - yard_dist;
-    if (diff >= 0 && diff <= 3 && halite > 100 && game->turn_number > 60 && game->turn_number < 200) {
-       //halite *= 2.5;
-    }*/
-
-    /*
-    int dist_to_enemy = 10000;
-    auto closest_enemy = closestEnemyShip(dest);
-    if (closest_enemy != nullptr) {
-        dist_to_enemy = calculate_distance(dest, closest_enemy->position);
-    }
-    for (auto d : ALL_DIRS) {
-        if (at(dest.directional_offset(d))->halite > 1000) {
-            halite += 1000;
-        }
-    }*/
-
-    /*
-    if (abs(turns_to - dist_to_enemy) <= 3) {
-        halite *= 1.5;
-    }*/
 
     if (at(dest)->occupied_by_not(pid)) {
         if (should_collide(dest, s)) {
@@ -1119,8 +1075,6 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
 
     bool inspired = false;
 
-    // grouping bonus
-    // halite *= (1.0 + (friends - enemies) / 5.0);
     if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
         if (is_1v1 && turns_to < 6) {
             bonus += 1 + (1 + friends - enemies);
@@ -1128,16 +1082,10 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         }
         else if (!is_1v1 && turns_to < 6) {
             bonus += 1 + (1 + friends - enemies);
-            //halite += halite * (friends - enemies) / 4.0;
-            //bonus += (friends) / 8.0;
             inspired = true;
         }
     }
-    //inspired |= dist_to_enemy_drop <= 6;
 
-    //to_cost = 0;
-    //int avg_hal = avg_around_point(dest, 1);
-    //home_cost = 0;
     int curr_hal = s->halite;
     double out = -1000;
     int mined = 0;
@@ -1152,10 +1100,6 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
         }
         int c = max(0, mined - to_cost);
         double cout = (c) / ((double)1 + turns + i);
-        /*
-        if (is_1v1) {
-            cout -= num_inspired(dest, pid) / (double)(turns + i);
-        }*/
         out = max(cout, out);
     }
 

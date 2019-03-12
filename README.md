@@ -33,9 +33,98 @@ gathering, returning, or end of game returning.
 
 Gathering ships score each square according to a somewhat complicated 
 cost function that essentially represents the halite / turn if that turtle
-decided to path their, pickup most of the halite and return to the nearest dropoff.
+decided to path there, pickup most of the halite on that square and return to the nearest dropoff.
 
-Let each tile on the grip and each ship be nodes that form two bipartitions in a graph where the edges between the bipartitions are the cost of turtle X to go to square Y. Now the problem is one of bipartite matching where we want to maximize the gathering rate of our fleet. This can be done by the Hungarian algorithm which finds a min cost max matching efficiently.
+
+This function is where most of the magic happens.
+Some interesting points: I incentive moving moving to new dropoffs (dropoffs that have a avg halite > 150).
+In 1v1 I target enemy ships a lot more and in 4p I target ships with a decay (more worth it to collide ships later in the game).
+I add a bonus for the number of friends in a radius of 5 minus the number of enemies in a radius of 5 if the square is inspired.
+
+```C++
+double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, Position dest, PlayerId pid, bool is_1v1,
+                       int extra_turns, Game &g, double future_ship_val) {
+    if (dest == shipyard) return 10000000;
+
+    double bonus = 1;
+
+    int halite = at(dest)->halite;
+    int turns_to = calculate_distance(s->position, dest);
+    int turns_back = calculate_distance(dest, shipyard);
+
+    int avg_amount = avg_around_point(dest, 3);
+    bonus = max(1.0, min(4.0, 3.0 * avg_amount / 150.0));
+
+    int shipyard_bonus = avg_around_point(shipyard, 3);
+    if (shipyard_bonus > 150) {
+        bonus += 3;
+    }
+
+    int enemies = enemies_around_point(dest, 5);
+    int friends = friends_around_point(dest, 5);
+
+    int turns = fmax(1.0, turns_to + turns_back);
+    if (!is_1v1) {
+        turns = turns_to + turns_back;
+    }
+
+    if (at(dest)->occupied_by_not(pid)) {
+        if (should_collide(dest, s)) {
+            if (is_1v1) {
+                halite += at(dest)->ship->halite;
+            }
+            if (!is_1v1) {
+                halite += at(dest)->ship->halite;
+                halite *= (0.5 + game->turn_number / ((double)constants::MAX_TURNS * 2.0));
+            }
+        } else {
+            if (!is_1v1) {
+                return 1000000;
+            }
+        }
+    }
+
+    bool inspired = false;
+
+    if (is_inspired(dest, pid) || likely_inspired(dest, turns_to)) {
+        if (is_1v1 && turns_to < 6) {
+            bonus += 1 + (1 + friends - enemies);
+            inspired = true;
+        }
+        else if (!is_1v1 && turns_to < 6) {
+            bonus += 1 + (1 + friends - enemies);
+            inspired = true;
+        }
+    }
+
+    int curr_hal = s->halite;
+    double out = -1000;
+    int mined = 0;
+    for (int i = 0; i<5; i++) {
+        mined += halite * 0.25;
+        if (inspired) {
+            mined += halite * 0.5;
+        }
+        halite *= 0.75;
+        if (mined + curr_hal > 1000) {
+            mined = 1000 - curr_hal;
+        }
+        int c = max(0, mined - to_cost);
+        double cout = (c) / ((double)1 + turns + i);
+        out = max(cout, out);
+    }
+
+    bonus = fmax(bonus, 1);
+    return -bonus * out;
+}
+```
+
+
+
+Let each tile on the grid and each ship be nodes that form two bipartitions in a graph where the edges between the bipartitions are the cost of turtle X to go to square Y. Now the problem is one of bipartite matching where we want to maximize the gathering rate of our fleet. This can be done by the Hungarian algorithm which finds a min cost max matching efficiently.
+
+
+
 
 # Returning ships
 Returning ships take the min cost path (with min turns) path back to the nearest dropoff calculated using BFS. Returning ships will also pick up if the value of the square is over a certain threshold. Returning ships aggressively avoid enemy ships and try to path around them (again using BFS) but this pathing does no enemy prediction so there is possiblities that it could get stuck in a loop.
