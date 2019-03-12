@@ -69,16 +69,31 @@ Each ship scores each direction by the amount they want to go there.
 Since we never want to make a move where our turtles would collide (except for the end of the match) 
 
 # Ship spawning
-Copy catting ship spawns in 2p seemed like a pretty good 'never be worse strategy'.
+Copy catting ship spawns in 2p seemed like a pretty good 'never be worse strategy'. I would permit overbuilding ships by about 4-5 over my opponent in 2p and use the
+same hard constants that I used in 4p to stop spawning.
 
 In 4p figuring out how many ships to spawn is a little trickier. ZanderShah and I tried
-experimenting with a exponential moving average to estimate the value of a gathering ship
-at any given time and if that value was over a certain threshold than it would be likely that a spawned ship could payoff itself. However in general this seemed to perform just as good as naive tactics. In the end I used a combination of this, mirroring my opponents and the total amount of halite on the map / the total number of ships.
+experimenting with a exponential moving average to estimate the value of a gathering ship (in terms of halite / turns)
+at any given time if (remaining turns * value est > ~1500) it would be likely that a spawned ship could payoff itself. However in general this seemed to perform just as good as naive tactics. In the end I used a combination of this, mirroring my opponents and the total amount of halite on the map / the total number of ships.
 
 # Tooling
 I used flourine for offline replay viewing which was a big help. I also added 
 debug visualizations using flog to visualize targetting and dropoff placement. I do
 regret not investing more into tooling overall especially after seeing tooling used by other competitors.
+
+Here is a screenshot from one of my local replays in fluorine setup.
+![fluorine](https://i.imgur.com/9r4xxOU.png)
+
+# Local testing
+In general local testing was very good in this game. As I said before there is no real rock paper scissors element in this game
+So if v151 beats v150 in your tests 90% of the time it's likely v151 will perform better on the ladder.
+
+4p games are somewhat more complicated because of inspiration. If you test with 1 v151 and 3 v150, because the v150 bots
+behave the same, they might get more inspiration because they'll mirror eachothers moves more often. My remedy for this was
+to use two bots of the current generation and two bots of the previous generation.
+
+I also didn't setup any cloud computing to run games, and I think this may have been useful for parameter tuning, but I found
+it wasn't necessary with the rate of games that my bot got on the ladder.
 
 Here is my stats for the playoffs.
 Stats from mlombs fantastic site 
