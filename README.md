@@ -148,6 +148,59 @@ If I deem a collision to be bad
 There was some interesting meta evolving in 4p turtle collisions. There's a prisoners
 dilemma. In the end though I just made my constraints for a 4p collision slightly more strict than 2p collisions.
 
+Here is the main function that chooses whether a collision is net profitable or not.
+```C++
+bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
+    bool is4p = game->players.size() == 4;
+    if (enemy == nullptr) {
+        enemy = at(position)->ship.get();
+    }
+
+    int possible_loss = 0;
+    if (ship->position == position) {
+        possible_loss = at(position)->halite;
+    }
+
+    if (at(position)->has_structure())
+        return at(position)->structure->owner == constants::PID;
+
+    if (enemy == nullptr) return true;
+
+    int hal_on_square = at(position)->halite;
+    int enemy_hal = hal_on_square + enemy->halite;
+    if (ship->halite > 700) return false;
+    if (possible_loss + enemy_hal < 300) return false;
+
+    Ship *cenemy = get_closest_ship(position, game->getEnemies(), {ship, enemy});
+    Ship *pal = get_closest_ship(position, {game->me}, {ship, enemy});
+
+    if (cenemy == nullptr) return true;
+    if (pal == nullptr) return false;
+
+    int collision_hal = cenemy->halite + pal->halite + hal_on_square;
+
+    // check if pal can gather
+    int enemies = enemies_around_point(position, 4);
+    int friends = friends_around_point(position, 4);
+    if (friends >= enemies + 2) return true;
+
+    int paldist = calculate_distance(pal->position, position);
+    int enemydist = calculate_distance(cenemy->position, position);
+    if (paldist > 2 + enemydist) return false;
+
+
+    if (pal->halite + collision_hal > 1400) return false;
+
+    if (ship->halite > possible_loss + enemy_hal)
+        return false;
+
+    if (friends >= enemies) {
+        return true;
+    }
+    return false;
+}
+```
+
 # Dropoffs
 Dropoffs were the main improvement to my bot in the mid to late season.
 I saw significant improvements once I implemented a system for ships to plan dropoffs

@@ -967,16 +967,6 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
         enemy = at(position)->ship.get();
     }
 
-    if (is4p) {
-        //if (at(position)->ship.get() != nullptr) {
-        //    return false;
-        //}
-    }
-
-    /*
-    if (game->turn_number < 300 && is4p && at(position)->occupied_by_not(constants::PID)) {
-        return false;
-    }*/
     int possible_loss = 0;
     if (ship->position == position) {
         possible_loss = at(position)->halite;
@@ -990,17 +980,7 @@ bool GameMap::should_collide(Position position, Ship *ship, Ship *enemy) {
     int hal_on_square = at(position)->halite;
     int enemy_hal = hal_on_square + enemy->halite;
     if (ship->halite > 700) return false;
-    //if (is4p && ship->halite > 500) return false;
     if (possible_loss + enemy_hal < 300) return false;
-    //if (is4p && enemy_hal < 500) return false;
-
-    // estimated future value of this ship
-    /*
-    if (game->players.size() == 4) {
-        if (ship->halite + Metrics::getHalPerShip() > enemy->halite) {
-            return false;
-        }
-    }*/
 
     Ship *cenemy = get_closest_ship(position, game->getEnemies(), {ship, enemy});
     Ship *pal = get_closest_ship(position, {game->me}, {ship, enemy});
