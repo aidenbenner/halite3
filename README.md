@@ -3,44 +3,36 @@ This is the code used to run the bot I wrote for the Halite III AI competition
 ran by two sigma. I came 7th overall and was the highest ranked undergraduate
 student. 
 
-_Disclaimer:_ this is not clean code. A lot of things are hacky with 0 documentation because
-I was the only one working on this project.
-
-This was the first AI competition i've ever participated in and I had a lot of fun.
-I spent about 4 months working on my bot.
+This was the first AI competition I've ever participated in and I had a lot of fun.
 
 Here is more information about the game https://halite.io/
 Here is my player page https://halite.io/user/?user_id=1185
 
 # Post-Mortem
-Before reading you should read the overview of the rules for halite 3 from 
-the page above. Halite 3 is a resource management game.
+Here is an overview of the rules taken from the Halite documentation
+
+"Halite III is a resource management game in which players build and command ships that explore the ocean and collect halite. Ships use halite as an energy source, and the player with the most stored halite at the end of the game is the winner.
+
+Players begin play with a shipyard, and can use collected halite to build new ships. To efficiently collect halite, players must devise a strategy based on building ships and dropoff points. Ships can explore the ocean, collect halite, and store it in the shipyard or in dropoff points. Players interact by seeking inspiring competition, or by colliding ships to send both to the bottom of the sea. "
+
 
 Here is a screen cap of my bot in action.
 ![Halite](https://i.imgur.com/TmiKKkw.png)
-(One of my few wins against teccles, ReCurse and TheDuck all players with bots
-that smash mine typically.) One thing you 
-can even notice from a single screen cap of the game is that *it's really hard
-to figure out what's going on*. I think this was an interesting challenge
-in Halite. When playing against the top players there would be games you would just lose and have no idea why you lost them besides
-the fact that they just 'mined better than you'. There was never any 'secret sauce' for this game. At the beginning I assumed
-the top players were doing some magic path calculation that I was missing completely
-but really it seems everyone used pretty simple heuristics to model each part of the game
-(including myself) and then just did a ton of tuning.
-In general there isn't a ton of high level strategic depth to the game beyond 'mine as much as you can as fast as you can', and most of 
+(One of my few wins against the top 3 bots in this year's game teccles, ReCurse and TheDuck).
+
+In general there isn't a ton of high level strategic depth to the game beyond mine as much as you can as fast as you can, and most of 
 the evaluation of moves for a given turtle can be done in a fairly small local context.
 
 # Gathering and Core
-Ships are assigned roles based on their current state. The roles are
+I assigned roles to ships based on their current state. The roles are
 gathering, returning, or end of game returning.
 
-Gathering ships score each square according to a somewhat complicated 
-cost function that essentially represents the halite / turn if that turtle
+Gathering ships score each square according to a cost function that roughly represents the halite / turn if that turtle
 decided to path there, pickup most of the halite on that square and return to the nearest dropoff.
 
 
-This function is where most of the magic happens.
-Some interesting points: I incentive moving moving to new dropoffs (dropoffs that have a avg halite > 150).
+This function defines most of the behaviour of my bot, and tuning it was where I spent most of my time.
+Some interesting points: I incentivize moving moving to new dropoffs (dropoffs that have a avg halite > 150), and 'phantom' dropoffs (dropoffs that I have planned but haven't placed yet).
 In 1v1 I target enemy ships a lot more and in 4p I target ships with a decay (more worth it to collide ships later in the game).
 I add a bonus for the number of friends in a radius of 5 minus the number of enemies in a radius of 5 if the square is inspired.
 
@@ -122,11 +114,12 @@ double GameMap::costfn(Ship *s, int to_cost, int home_cost, Position shipyard, P
 }
 ```
 
-
+So after each ship has scored each tile, we now need to figure out a good assignment. In general it was very common for two ships to want to target the same square.
+At first I just did a greedy assignment (e.g. assign the best cost ship/square pair in order from best cost to worst cost). If it is true that our cost function roughly represents
+the halite/turn if our ship decides to path there, then maximizing this value over all ships should lead to an 'optimal' job assignment. Fortunately there are algorithms that solve 
+this general purpose job assignment fairly fast.
 
 Let each tile on the grid and each ship be nodes that form two bipartitions in a graph where the edges between the bipartitions are the cost of turtle X to go to square Y. Now the problem is one of bipartite matching where we want to maximize the gathering rate of our fleet. This can be done by the Hungarian algorithm which finds a min cost max matching efficiently.
-
-
 
 
 # Returning ships
@@ -252,7 +245,6 @@ Stats from mlombs fantastic site
 My bot seemed to be better in 2p. I believe this is mostly because I was good
 at taking aggressive collisions, and the collisions I took in 4p were less
 valuable.
-
 
 ## Improvements for next season
 Overall halite was a fantastic competition that I spent far too much time on.
